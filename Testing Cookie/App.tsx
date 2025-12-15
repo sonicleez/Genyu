@@ -116,12 +116,36 @@ const ASPECT_RATIOS = [
 ];
 
 const CHARACTER_STYLES = [
-    { value: 'pixar', label: '3D Animation (Pixar/Disney Style)' },
-    { value: 'anime', label: 'Anime / Manga' },
-    { value: 'cinematic', label: 'Realistic Cinematic' },
-    { value: 'comic', label: 'American Comic Book' },
-    { value: 'fantasy', label: 'Digital Fantasy Art' },
-    { value: 'clay', label: 'Claymation / Stop Motion' },
+    {
+        value: 'pixar',
+        label: '3D Animation (Pixar/Disney Style)',
+        prompt: 'STRICT STYLE: 3D rendered character in Pixar/Disney animation style. MUST have: soft rounded features, smooth gradient shading, large expressive eyes with glossy reflections, exaggerated proportions (big head, small body for cute characters), vibrant saturated colors, soft ambient lighting with rim lights, no hard edges, clean subsurface scattering on skin. Art style: Toy Story, Inside Out, Zootopia aesthetic. Render engine style: Arnold/RenderMan quality.'
+    },
+    {
+        value: 'anime',
+        label: 'Anime / Manga',
+        prompt: 'STRICT STYLE: Japanese anime/manga illustration. MUST have: large detailed eyes with highlights and sparkles, sharp clean lineart, cel-shaded coloring with minimal gradients, vibrant hair colors with chunky highlights, sharp angular shadows, exaggerated facial expressions, simplified nose (small dots or lines), detailed clothing folds. Art style: Studio Ghibli, Makoto Shinkai, modern anime aesthetic. NO realistic shading, NO western cartoon style.'
+    },
+    {
+        value: 'cinematic',
+        label: 'Realistic Cinematic',
+        prompt: 'STRICT STYLE: Photorealistic cinematic rendering. MUST have: realistic skin texture with pores and subsurface scattering, accurate anatomy and proportions, natural hair strands with physics, realistic fabric materials with wrinkles, professional studio lighting (key light + fill + rim), shallow depth of field, film grain texture, color grading like Hollywood movies. Photography style: 85mm portrait lens, f/2.8 aperture, cinematic color palette. NO cartoon features, NO stylization.'
+    },
+    {
+        value: 'comic',
+        label: 'American Comic Book',
+        prompt: 'STRICT STYLE: American comic book illustration. MUST have: bold black ink outlines (thick outer lines, thinner inner details), strong contrast with dramatic shadows, halftone dot shading, dynamic poses with motion lines, exaggerated anatomy (muscular heroes, curvy females), vibrant primary colors (red, blue, yellow dominance), Ben-Day dots texture. Art style: Marvel/DC comics, Jack Kirby, Jim Lee aesthetic. NO soft gradients, NO realistic rendering.'
+    },
+    {
+        value: 'fantasy',
+        label: 'Digital Fantasy Art',
+        prompt: 'STRICT STYLE: Epic fantasy digital painting. MUST have: painterly brush strokes visible, rich atmospheric lighting (magical glows, dramatic backlighting), detailed costume design with ornate patterns, fantasy elements (armor, robes, magical effects), semi-realistic proportions with idealized features, rich color palette with jewel tones, ethereal atmosphere with particles/mist. Art style: concept art for games like World of Warcraft, League of Legends, Magic: The Gathering. Medium: digital painting with visible brush work.'
+    },
+    {
+        value: 'clay',
+        label: 'Claymation / Stop Motion',
+        prompt: 'STRICT STYLE: Claymation/stop-motion puppet style. MUST have: visible fingerprint textures on clay surface, slightly lumpy handmade appearance, matte finish with no glossy shine, simple geometric shapes, visible wire armature bumps, exaggerated simplified features, chunky proportions, soft pastel or earthy colors, slight imperfections showing handcrafted quality. Art style: Wallace & Gromit, Coraline, Kubo aesthetic. NO smooth 3D rendering, NO clean digital look.'
+    },
 ];
 
 // --- Helper Functions ---
@@ -470,15 +494,28 @@ const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = ({ isOpe
         setError(null);
 
         try {
-            const styleLabel = CHARACTER_STYLES.find(s => s.value === style)?.label || style;
+            const styleConfig = CHARACTER_STYLES.find(s => s.value === style);
+            const stylePrompt = styleConfig?.prompt || styleConfig?.label || style;
+
             const fullPrompt = `
-            Design a character sheet.
-            Subject: ${prompt}
-            Style: ${styleLabel}
-            Background: Neutral, simple studio background (white or grey) for easy cutout.
-            Framing: Full body shot, clear pose.
-            Quality: 8k, highly detailed, masterpiece.
-            `;
+CHARACTER DESIGN TASK:
+Create a professional character sheet with the following specifications:
+
+${stylePrompt}
+
+CHARACTER DESCRIPTION:
+${prompt}
+
+MANDATORY REQUIREMENTS:
+- Background: Pure white or light grey studio background (NO complex scenes, NO environments)
+- Framing: Full body shot, character facing forward or 3/4 view
+- Pose: Clear T-pose or A-pose for character sheet reference
+- Lighting: Even, professional studio lighting with no harsh shadows
+- Quality: Ultra high resolution, 8K, masterpiece quality
+- Consistency: Maintain EXACT style characteristics throughout entire image
+
+CRITICAL: The style must be STRICTLY enforced. Do not blend styles or deviate from the specified aesthetic.
+            `.trim();
 
             if (genyuToken) {
                 // >>> ROUTE 1: GENYU PROXY <<<
@@ -496,7 +533,7 @@ const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = ({ isOpe
                         token: genyuToken,
                         prompt: fullPrompt,
                         aspect: genyuAspect,
-                        style: styleLabel
+                        style: styleConfig?.label || style
                     })
                 });
 
