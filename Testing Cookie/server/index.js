@@ -133,10 +133,10 @@ app.post('/api/proxy/google/video/start', async (req, res) => {
         ]
     };
 
-    console.log("[Proxy] FULL Payload:", JSON.stringify(payload, null, 2)); // DEBUG: Check what we send
+    console.log("DEBUG Payload:", JSON.stringify(payload, null, 2)); // DEBUG: Check what we send
 
     try {
-        const response = await axios.post(VIDEO_API, payload, {
+        const response = await axios.post(VIDEO_API, JSON.stringify(payload), {
             headers: {
                 'authorization': `Bearer ${token}`,
                 'content-type': 'text/plain;charset=UTF-8',
