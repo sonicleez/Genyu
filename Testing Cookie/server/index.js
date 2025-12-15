@@ -8,7 +8,7 @@ app.use(express.json({ limit: '50mb' }));
 
 // Config
 const GENYU_API = 'https://aisandbox-pa.googleapis.com/v1/projects/07c3d6ef-3305-4196-bcc2-7db5294be436/flowMedia:batchGenerateImages';
-const VIDEO_API = 'https://aisandbox-pa.googleapis.com/v1/projects/07c3d6ef-3305-4196-bcc2-7db5294be436/flowMedia:batchGenerateVideos';
+const VIDEO_API = 'https://aisandbox-pa.googleapis.com/v1/video:batchGenerateVideos';
 
 // --- Image Generation Proxy (Labs Google / Fx Flow) ---
 app.post('/api/proxy/genyu/image', async (req, res) => {
