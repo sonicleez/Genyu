@@ -138,7 +138,7 @@ app.post('/api/proxy/google/video/start', async (req, res) => {
         const response = await axios.post(VIDEO_API, payload, {
             headers: {
                 'authorization': `Bearer ${token}`,
-                'content-type': 'application/json',
+                'content-type': 'text/plain;charset=UTF-8',
                 'origin': 'https://labs.google',
                 'user-agent': req.headers['user-agent']
             }
