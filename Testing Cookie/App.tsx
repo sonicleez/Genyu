@@ -782,12 +782,13 @@ CRITICAL: The style must be STRICTLY enforced. Do not blend styles or deviate fr
 interface ScriptGeneratorModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onGenerate: (idea: string, count: number, selectedCharacterIds: string[]) => Promise<void>;
+    onGenerate: (idea: string, count: number, selectedCharacterIds: string[], selectedProductIds: string[]) => Promise<void>;
     isGenerating: boolean;
     activePresetId: string;
     customPresets: ScriptPreset[];
     onPresetChange: (presetId: string) => void;
-    characters: Character[]; // New prop
+    characters: Character[];
+    products: Product[];
 }
 
 const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({
@@ -798,22 +799,33 @@ const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({
     activePresetId,
     customPresets,
     onPresetChange,
-    characters
+    characters,
+    products
 }) => {
     const [idea, setIdea] = useState('');
     const [sceneCount, setSceneCount] = useState(5);
     const [selectedCharacterIds, setSelectedCharacterIds] = useState<string[]>([]);
+    const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
 
-    // Initialize selected characters when modal opens or characters change
+    // Initialize selected characters and products when modal opens
     useEffect(() => {
         if (isOpen && characters.length > 0) {
             setSelectedCharacterIds(characters.map(c => c.id));
         }
-    }, [isOpen, characters.length]);
+        if (isOpen && products.length > 0) {
+            setSelectedProductIds(products.map(p => p.id));
+        }
+    }, [isOpen, characters.length, products.length]);
 
     const toggleCharacter = (id: string) => {
         setSelectedCharacterIds(prev =>
             prev.includes(id) ? prev.filter(cid => cid !== id) : [...prev, id]
+        );
+    };
+
+    const toggleProduct = (id: string) => {
+        setSelectedProductIds(prev =>
+            prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
         );
     };
 
@@ -825,7 +837,7 @@ const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({
         setIdea(''); // Clear input
 
         // Trigger generation in background
-        onGenerate(idea, sceneCount, selectedCharacterIds);
+        onGenerate(idea, sceneCount, selectedCharacterIds, selectedProductIds);
     };
 
     return (
@@ -840,27 +852,53 @@ const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({
 
                 {/* Character Selection */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Nhân vật xuất hiện</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto p-2 bg-gray-900/50 rounded-lg border border-gray-700">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">👤 Nhân vật xuất hiện</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-32 overflow-y-auto p-2 bg-gray-900/50 rounded-lg border border-gray-700">
                         {characters.map(char => (
-                            <label key={char.id} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-800 cursor-pointer">
+                            <label key={char.id} className="flex items-center space-x-2 p-1.5 rounded hover:bg-gray-800 cursor-pointer">
                                 <input
                                     type="checkbox"
                                     checked={selectedCharacterIds.includes(char.id)}
                                     onChange={() => toggleCharacter(char.id)}
-                                    className="rounded border-gray-600 text-green-500 focus:ring-green-500 bg-gray-700"
+                                    className="rounded border-gray-600 text-green-500 focus:ring-green-500 bg-gray-700 w-3.5 h-3.5"
                                 />
-                                <div className="flex items-center space-x-2 truncate">
+                                <div className="flex items-center space-x-1.5 truncate">
                                     {char.masterImage ? (
-                                        <img src={char.masterImage} alt="" className="w-6 h-6 rounded-full object-cover" />
+                                        <img src={char.masterImage} alt="" className="w-5 h-5 rounded-full object-cover" />
                                     ) : (
-                                        <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-xs">{char.name.charAt(0)}</div>
+                                        <div className="w-5 h-5 rounded-full bg-gray-600 flex items-center justify-center text-[10px]">{char.name.charAt(0)}</div>
                                     )}
-                                    <span className="text-sm text-gray-300 truncate">{char.name || 'Unnamed'}</span>
+                                    <span className="text-xs text-gray-300 truncate">{char.name || 'Unnamed'}</span>
                                 </div>
                             </label>
                         ))}
-                        {characters.length === 0 && <span className="text-gray-500 text-sm p-2 col-span-3">Chưa có nhân vật nào.</span>}
+                        {characters.length === 0 && <span className="text-gray-500 text-xs p-2 col-span-3">Chưa có nhân vật.</span>}
+                    </div>
+                </div>
+
+                {/* Product Selection */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">📦 Sản phẩm / Đạo cụ đặc biệt</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-32 overflow-y-auto p-2 bg-gray-900/50 rounded-lg border border-brand-orange/30">
+                        {products.map(prod => (
+                            <label key={prod.id} className="flex items-center space-x-2 p-1.5 rounded hover:bg-gray-800 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedProductIds.includes(prod.id)}
+                                    onChange={() => toggleProduct(prod.id)}
+                                    className="rounded border-gray-600 text-brand-orange focus:ring-brand-orange bg-gray-700 w-3.5 h-3.5"
+                                />
+                                <div className="flex items-center space-x-1.5 truncate">
+                                    {prod.masterImage ? (
+                                        <img src={prod.masterImage} alt="" className="w-5 h-5 rounded object-cover" />
+                                    ) : (
+                                        <div className="w-5 h-5 rounded bg-gray-600 flex items-center justify-center text-[10px]">📦</div>
+                                    )}
+                                    <span className="text-xs text-gray-300 truncate">{prod.name || 'Unnamed'}</span>
+                                </div>
+                            </label>
+                        ))}
+                        {products.length === 0 && <span className="text-gray-500 text-xs p-2 col-span-3">Chưa có sản phẩm.</span>}
                     </div>
                 </div>
 
@@ -2328,7 +2366,7 @@ const App: React.FC = () => {
         document.getElementById('script-upload-input')?.click();
     };
 
-    const handleGenerateScript = async (idea: string, count: number, selectedCharacterIds: string[]) => {
+    const handleGenerateScript = async (idea: string, count: number, selectedCharacterIds: string[], selectedProductIds: string[]) => {
         const apiKey = userApiKey || process.env.API_KEY;
         if (!apiKey) {
             alert("Vui lòng nhập API Key để sử dụng tính năng này.");
@@ -2348,11 +2386,11 @@ const App: React.FC = () => {
             // Filter selected characters
             const activeCharacters = state.characters.filter(c => selectedCharacterIds.includes(c.id));
 
-            // Get all products for reference
-            const allProducts = state.products || [];
+            // Filter selected products
+            const activeProducts = (state.products || []).filter(p => selectedProductIds.includes(p.id));
 
             // Build prompt using preset, characters and products
-            const prompt = buildScriptPrompt(idea, activePreset, activeCharacters, allProducts, count);
+            const prompt = buildScriptPrompt(idea, activePreset, activeCharacters, activeProducts, count);
 
             console.log('🎬 Generating script with preset:', activePreset.name);
             console.log('Prompt:', prompt);
@@ -3606,6 +3644,7 @@ const App: React.FC = () => {
                 customPresets={state.customScriptPresets}
                 onPresetChange={(presetId) => updateStateAndRecord(s => ({ ...s, activeScriptPreset: presetId }))}
                 characters={state.characters}
+                products={state.products || []}
             />
             <CharacterDetailModal
                 isOpen={!!editingCharacterId}
