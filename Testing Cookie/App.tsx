@@ -295,6 +295,101 @@ const ProjectNameInput: React.FC<ProjectNameInputProps> = ({ value, onChange }) 
     </div>
 );
 
+// --- Text Expander Modal (Popup for editing any text) ---
+interface TextExpanderModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    title: string;
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+}
+const TextExpanderModal: React.FC<TextExpanderModalProps> = ({ isOpen, onClose, title, value, onChange, placeholder }) => {
+    const [localValue, setLocalValue] = useState(value);
+
+    useEffect(() => {
+        if (isOpen) setLocalValue(value);
+    }, [isOpen, value]);
+
+    const handleSave = () => {
+        onChange(localValue);
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-3xl max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between p-4 border-b border-gray-700">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        <span>📝</span> {title}
+                    </h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">✕</button>
+                </div>
+                <div className="flex-1 p-4 overflow-hidden">
+                    <textarea
+                        value={localValue}
+                        onChange={(e) => setLocalValue(e.target.value)}
+                        placeholder={placeholder}
+                        autoFocus
+                        className="w-full h-full min-h-[300px] bg-gray-800 border border-gray-600 rounded-lg p-4 text-white text-sm leading-relaxed focus:border-brand-orange focus:outline-none resize-none"
+                    />
+                </div>
+                <div className="flex justify-end gap-3 p-4 border-t border-gray-700">
+                    <button onClick={onClose} className="px-4 py-2 text-gray-400 hover:text-white transition-colors">
+                        Hủy
+                    </button>
+                    <button onClick={handleSave} className={`px-6 py-2 bg-gradient-to-r ${PRIMARY_GRADIENT} text-white font-bold rounded-lg hover:opacity-90 transition-opacity`}>
+                        Lưu thay đổi
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Expandable Textarea with popup button ---
+interface ExpandableTextareaProps {
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    rows?: number;
+    className?: string;
+    title?: string;
+}
+const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({ value, onChange, placeholder, rows = 3, className = '', title = 'Chỉnh sửa nội dung' }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    return (
+        <>
+            <div className="relative group">
+                <textarea
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    rows={rows}
+                    className={className}
+                />
+                <button
+                    onClick={() => setIsExpanded(true)}
+                    className="absolute top-1 right-1 w-5 h-5 bg-gray-700/80 hover:bg-brand-orange text-gray-400 hover:text-white rounded flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-all"
+                    title="Mở rộng để chỉnh sửa"
+                >
+                    ⛶
+                </button>
+            </div>
+            <TextExpanderModal
+                isOpen={isExpanded}
+                onClose={() => setIsExpanded(false)}
+                title={title}
+                value={value}
+                onChange={onChange}
+                placeholder={placeholder}
+            />
+        </>
+    );
+};
 
 
 interface ApiKeyModalProps {
@@ -1343,19 +1438,21 @@ const SceneRow: React.FC<SceneRowProps> = ({ scene, index, characters, products,
 
             {/* Script */}
             <div className="md:col-span-2 space-y-2">
-                <textarea
+                <ExpandableTextarea
                     value={scene.language1}
-                    onChange={(e) => updateScene(scene.id, { language1: e.target.value })}
+                    onChange={(val) => updateScene(scene.id, { language1: val })}
                     placeholder="Script (Lang 1)..."
                     rows={3}
                     className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-gray-300 focus:border-green-500 resize-none"
+                    title="Script (Language 1)"
                 />
-                <textarea
+                <ExpandableTextarea
                     value={scene.vietnamese}
-                    onChange={(e) => updateScene(scene.id, { vietnamese: e.target.value })}
+                    onChange={(val) => updateScene(scene.id, { vietnamese: val })}
                     placeholder="Lời thoại (Việt)..."
                     rows={3}
                     className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white focus:border-green-500 resize-none"
+                    title="Lời thoại Tiếng Việt"
                 />
             </div>
 
@@ -1368,55 +1465,61 @@ const SceneRow: React.FC<SceneRowProps> = ({ scene, index, characters, products,
                     placeholder="Tên cảnh (VD: Rượt đuổi)"
                     className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs font-bold text-white focus:border-green-500"
                 />
-                <textarea
+                <ExpandableTextarea
                     value={scene.contextDescription}
-                    onChange={(e) => updateScene(scene.id, { contextDescription: e.target.value })}
+                    onChange={(val) => updateScene(scene.id, { contextDescription: val })}
                     placeholder="Mô tả bối cảnh để AI vẽ..."
-                    rows={3}
+                    rows={2}
                     className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white focus:border-green-500 resize-none"
+                    title="Mô tả bối cảnh (Context Description)"
                 />
-                {/* Per-Scene Cinematography Overrides */}
-                <div className="grid grid-cols-3 gap-1">
+                {/* Per-Scene Cinematography Overrides - IMPROVED SIZE */}
+                <div className="space-y-1.5 bg-gray-900/60 p-2 rounded border border-gray-700/50">
+                    <div className="text-[9px] text-gray-500 font-semibold">📹 Cinematography</div>
                     <select
                         value={scene.cameraAngleOverride || ''}
                         onChange={(e) => updateScene(scene.id, { cameraAngleOverride: e.target.value })}
-                        className="bg-gray-900 text-[9px] text-gray-400 border border-gray-700 rounded px-1 py-0.5 focus:border-brand-orange truncate"
+                        className="w-full bg-gray-800 text-[11px] text-gray-300 border border-gray-600 rounded px-2 py-1.5 focus:border-brand-orange"
                         title="Camera Angle"
                     >
                         {CAMERA_ANGLES.map(angle => (
-                            <option key={angle.value} value={angle.value}>{angle.label}</option>
+                            <option key={angle.value} value={angle.value}>🎬 {angle.label}</option>
                         ))}
                     </select>
-                    <select
-                        value={scene.lensOverride || ''}
-                        onChange={(e) => updateScene(scene.id, { lensOverride: e.target.value })}
-                        className="bg-gray-900 text-[9px] text-gray-400 border border-gray-700 rounded px-1 py-0.5 focus:border-brand-orange truncate"
-                        title="Lens"
-                    >
-                        {LENS_OPTIONS.map(lens => (
-                            <option key={lens.value} value={lens.value}>{lens.label}</option>
-                        ))}
-                    </select>
-                    <select
-                        value={scene.transitionType || ''}
-                        onChange={(e) => updateScene(scene.id, { transitionType: e.target.value })}
-                        className="bg-gray-900 text-[9px] text-purple-400 border border-purple-900/50 rounded px-1 py-0.5 focus:border-purple-500 truncate"
-                        title="Transition to Next Scene"
-                    >
-                        {TRANSITION_TYPES.map(t => (
-                            <option key={t.value} value={t.value}>{t.label}</option>
-                        ))}
-                    </select>
+                    <div className="grid grid-cols-2 gap-1.5">
+                        <select
+                            value={scene.lensOverride || ''}
+                            onChange={(e) => updateScene(scene.id, { lensOverride: e.target.value })}
+                            className="bg-gray-800 text-[11px] text-gray-300 border border-gray-600 rounded px-2 py-1 focus:border-brand-orange"
+                            title="Lens"
+                        >
+                            {LENS_OPTIONS.map(lens => (
+                                <option key={lens.value} value={lens.value}>🔭 {lens.label}</option>
+                            ))}
+                        </select>
+                        <select
+                            value={scene.transitionType || ''}
+                            onChange={(e) => updateScene(scene.id, { transitionType: e.target.value })}
+                            className="bg-gray-800 text-[11px] text-purple-300 border border-purple-800/50 rounded px-2 py-1 focus:border-purple-500"
+                            title="Transition"
+                        >
+                            {TRANSITION_TYPES.map(t => (
+                                <option key={t.value} value={t.value}>✂️ {t.label}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </div>
 
             {/* Veo Prompt */}
             <div className="md:col-span-3 h-full">
-                <textarea
+                <ExpandableTextarea
                     value={scene.veoPrompt}
-                    onChange={(e) => updateScene(scene.id, { veoPrompt: e.target.value })}
+                    onChange={(val) => updateScene(scene.id, { veoPrompt: val })}
                     placeholder="(00:00-00:05) Prompt cho Google Veo..."
+                    rows={7}
                     className="w-full h-[160px] bg-gray-900 border border-blue-900/30 rounded p-2 text-[11px] text-blue-200 focus:border-blue-500 font-mono resize-none leading-relaxed"
+                    title="Veo Video Prompt"
                 />
             </div>
 
