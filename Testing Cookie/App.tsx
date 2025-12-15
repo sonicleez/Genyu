@@ -139,19 +139,6 @@ const TRANSITION_TYPES = [
     { value: 'j-cut', label: 'J-Cut', hint: 'Audio precedes visual' },
 ];
 
-// Veo 3.1 Mode Options
-const VEO_MODES = [
-    { value: 'image-to-video', label: '🎬 Image → Video', hint: 'Một ảnh tạo video' },
-    { value: 'start-end-frame', label: '🎞️ Start/End Frame', hint: 'Hai ảnh làm điểm đầu & cuối' },
-];
-
-const IMAGE_ROLES = [
-    { value: 'single', label: '📷 Single Image', color: 'gray' },
-    { value: 'start-frame', label: '🟢 Start Frame', color: 'green' },
-    { value: 'end-frame', label: '🔴 End Frame', color: 'red' },
-];
-
-
 const IMAGE_MODELS = [
     { value: 'gemini-2.5-flash-image', label: 'Google Nano Banana (Fast)' },
     { value: 'gemini-3-pro-image-preview', label: 'Google Nano Banana Pro (High Quality)' },
@@ -1430,24 +1417,10 @@ interface SceneRowProps {
     updateScene: (id: string, updates: Partial<Scene>) => void;
     removeScene: (id: string) => void;
     generateImage: () => void;
-    generateEndFrame: () => void;
     openImageViewer: () => void;
 }
 
-const SceneRow: React.FC<SceneRowProps> = ({ scene, index, characters, products, updateScene, removeScene, generateImage, generateEndFrame, openImageViewer }) => {
-    const endFrameInputRef = React.useRef<HTMLInputElement>(null);
-
-    const handleEndFrameUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                updateScene(scene.id, { endFrameImage: reader.result as string });
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
+const SceneRow: React.FC<SceneRowProps> = ({ scene, index, characters, products, updateScene, removeScene, generateImage, openImageViewer }) => {
     return (
         <div className="grid md:grid-cols-12 gap-4 items-start bg-gray-800/30 p-4 rounded-lg border border-gray-700 hover:border-gray-500 transition-all group/row">
             {/* Scene Number */}
@@ -1600,115 +1573,27 @@ const SceneRow: React.FC<SceneRowProps> = ({ scene, index, characters, products,
 
             {/* Image & Actions */}
             <div className="md:col-span-3 flex flex-col space-y-2">
-                {/* Veo Mode Selection */}
-                <div className="flex items-center gap-2 bg-gray-900/60 p-1.5 rounded border border-gray-700/50">
-                    <span className="text-[9px] text-gray-500 font-semibold">🎥 Veo:</span>
-                    {VEO_MODES.map(mode => (
-                        <label key={mode.value} className="flex items-center gap-1 cursor-pointer">
-                            <input
-                                type="radio"
-                                name={`veo-mode-${scene.id}`}
-                                value={mode.value}
-                                checked={(scene.veoMode || 'image-to-video') === mode.value}
-                                onChange={() => updateScene(scene.id, {
-                                    veoMode: mode.value as 'image-to-video' | 'start-end-frame',
-                                    imageRole: mode.value === 'start-end-frame' ? 'start-frame' : 'single'
-                                })}
-                                className="w-3 h-3 accent-brand-orange"
-                            />
-                            <span className="text-[10px] text-gray-300">{mode.label}</span>
-                        </label>
-                    ))}
-                </div>
-
-                {/* Image Display with Role Badge */}
-                <div className="flex gap-2">
-                    {/* Main Image (Start Frame or Single) */}
-                    <div
-                        className={`relative flex-1 aspect-video bg-black rounded border overflow-hidden group cursor-pointer transition-colors ${scene.imageRole === 'start-frame' ? 'border-green-500' :
-                            scene.imageRole === 'end-frame' ? 'border-red-500' : 'border-gray-600 hover:border-green-500'
-                            }`}
-                        onClick={() => scene.generatedImage && openImageViewer()}
-                    >
-                        {/* Role Badge */}
-                        {scene.generatedImage && (
-                            <div className={`absolute top-1 left-1 z-20 px-1.5 py-0.5 rounded text-[8px] font-bold ${scene.imageRole === 'start-frame' ? 'bg-green-600 text-white' :
-                                scene.imageRole === 'end-frame' ? 'bg-red-600 text-white' :
-                                    'bg-gray-700 text-gray-300'
-                                }`}>
-                                {scene.imageRole === 'start-frame' ? '🟢 START' :
-                                    scene.imageRole === 'end-frame' ? '🔴 END' : '📷'}
+                {/* Image Display */}
+                <div
+                    className="relative w-full aspect-video bg-black rounded border border-gray-600 overflow-hidden group cursor-pointer hover:border-green-500 transition-colors"
+                    onClick={() => scene.generatedImage && openImageViewer()}
+                >
+                    {scene.isGenerating && !scene.videoStatus ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/80 z-10">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mb-2"></div>
+                            <span className="text-[10px] text-green-400 animate-pulse">Rendering Image...</span>
+                        </div>
+                    ) : scene.generatedImage ? (
+                        <>
+                            <img src={scene.generatedImage} alt="Generated" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-white text-xs font-bold border border-white px-3 py-1 rounded-full backdrop-blur-sm">🔍 Phóng to</span>
                             </div>
-                        )}
-
-                        {scene.isGenerating && !scene.videoStatus ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/80 z-10">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mb-2"></div>
-                                <span className="text-[10px] text-green-400 animate-pulse">Rendering Image...</span>
-                            </div>
-                        ) : scene.generatedImage ? (
-                            <>
-                                <img src={scene.generatedImage} alt="Generated" className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <span className="text-white text-xs font-bold border border-white px-3 py-1 rounded-full backdrop-blur-sm">🔍 Phóng to</span>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-xs flex-col">
-                                <span className="text-2xl mb-1">🖼️</span>
-                                <span>{scene.veoMode === 'start-end-frame' ? 'Start Frame' : 'Image'}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* End Frame (only shown when Start/End Frame mode) */}
-                    {scene.veoMode === 'start-end-frame' && (
-                        <div className="relative w-28 aspect-video bg-black rounded border border-red-500/50 overflow-hidden group/end hover:border-red-500 transition-colors">
-                            {/* Hidden file input */}
-                            <input
-                                ref={endFrameInputRef}
-                                type="file"
-                                accept="image/*"
-                                onChange={handleEndFrameUpload}
-                                className="hidden"
-                            />
-
-                            {/* End Frame Badge */}
-                            <div className="absolute top-1 left-1 z-20 px-1 py-0.5 rounded text-[7px] font-bold bg-red-600 text-white">
-                                🔴 END
-                            </div>
-
-                            {scene.endFrameImage ? (
-                                <>
-                                    <img src={scene.endFrameImage} alt="End Frame" className="w-full h-full object-cover" />
-                                    {/* Hover overlay with actions */}
-                                    <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-1 opacity-0 group-hover/end:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={() => updateScene(scene.id, { endFrameImage: null })}
-                                            className="text-[9px] text-red-400 hover:text-red-300"
-                                        >
-                                            ✕ Xóa
-                                        </button>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 text-[9px]">
-                                    <div className="flex flex-col items-center gap-1">
-                                        <button
-                                            onClick={() => endFrameInputRef.current?.click()}
-                                            className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-[9px] flex items-center gap-1"
-                                        >
-                                            📁 Upload
-                                        </button>
-                                        <button
-                                            onClick={generateEndFrame}
-                                            className="px-2 py-1 bg-red-900/50 hover:bg-red-800 text-red-300 rounded text-[9px] flex items-center gap-1"
-                                        >
-                                            ✨ AI Gen
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                        </>
+                    ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-xs flex-col">
+                            <span className="text-2xl mb-1">🖼️</span>
+                            <span>Chưa có ảnh</span>
                         </div>
                     )}
                 </div>
@@ -2815,7 +2700,7 @@ const App: React.FC = () => {
     };
 
     // --- Image Generation Logic ---
-    const performImageGeneration = async (sceneId: string, refinementPrompt?: string, isEndFrame: boolean = false) => {
+    const performImageGeneration = async (sceneId: string, refinementPrompt?: string) => {
         const currentState = stateRef.current; // Use FRESH state
         const currentSceneIndex = currentState.scenes.findIndex(s => s.id === sceneId);
         const sceneToUpdate = currentState.scenes[currentSceneIndex];
@@ -3119,21 +3004,16 @@ const App: React.FC = () => {
                     throw new Error(`Cannot find image URL. Keys: ${debugKeys}`);
                 }
 
-                // Save to endFrameImage or generatedImage based on isEndFrame flag
                 setState(s => ({
                     ...s,
                     scenes: s.scenes.map(sc => sc.id === sceneId ? {
                         ...sc,
-                        ...(isEndFrame
-                            ? { endFrameImage: imageUrl }
-                            : { generatedImage: imageUrl, imageRole: sc.veoMode === 'start-end-frame' ? 'start-frame' : 'single' }
-                        ),
-                        mediaId: isEndFrame ? sc.mediaId : extractedMediaId,
+                        generatedImage: imageUrl,
+                        mediaId: extractedMediaId,
                         error: null,
                         isGenerating: false
                     } : sc)
                 }));
-                console.log(isEndFrame ? "🔴 End Frame saved" : "🟢 Start Frame/Image saved");
                 return;
 
 
@@ -3215,20 +3095,11 @@ const App: React.FC = () => {
                 throw new Error("Missing Credentials");
             }
 
-            // Save Result (handles both routes)
+            // Save Result
             setState(s => ({
                 ...s,
-                scenes: s.scenes.map(sc => sc.id === sceneId ? {
-                    ...sc,
-                    ...(isEndFrame
-                        ? { endFrameImage: imageUrl }
-                        : { generatedImage: imageUrl, imageRole: sc.veoMode === 'start-end-frame' ? 'start-frame' : 'single' }
-                    ),
-                    isGenerating: false,
-                    error: null
-                } : sc)
+                scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, generatedImage: imageUrl, isGenerating: false, error: null } : sc)
             }));
-            console.log(isEndFrame ? "🔴 End Frame saved (Gemini)" : "🟢 Image saved (Gemini)");
 
         } catch (error) {
             console.error("Image generation failed:", error);
@@ -4007,7 +3878,6 @@ const App: React.FC = () => {
                                         updateScene={updateScene}
                                         removeScene={removeScene}
                                         generateImage={() => performImageGeneration(scene.id)}
-                                        generateEndFrame={() => performImageGeneration(scene.id, undefined, true)}
                                         openImageViewer={() => handleOpenImageViewer(index)}
                                     />
                                 ))}

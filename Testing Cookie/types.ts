@@ -55,17 +55,12 @@ export interface Scene {
   productIds: string[]; // Referenced Products/Props in this scene
   generatedImage: string | null;
 
-  // Video generation - Veo 3.1
+  // Video generation
   mediaId?: string; // Google Labs Media ID for Video Gen
   generatedVideo?: string; // URL of generated video
   videoOperationName?: string; // Operation Name for Polling
   videoStatus?: string; // Status: 'active', 'succeeded', 'failed'
   veoPrompt: string; // Prompt tối ưu cho Google Veo
-
-  // Veo 3.1 Mode Selection (NEW)
-  veoMode?: 'image-to-video' | 'start-end-frame'; // Manual mode selection
-  imageRole?: 'single' | 'start-frame' | 'end-frame'; // Role of generatedImage
-  endFrameImage?: string | null; // End frame for Start/End Frame mode
 
   // UI state
   isGenerating: boolean;
