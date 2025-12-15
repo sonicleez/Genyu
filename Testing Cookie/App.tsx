@@ -1,9 +1,12 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import type { ProjectState, Character, Scene, CharacterProp } from './types';
+import type { ProjectState, Character, Scene, CharacterProp, ScriptPreset } from './types';
 import { useHotkeys } from './hooks/useHotkeys';
 import { saveProject, openProject } from './utils/fileUtils';
 import { GoogleGenAI, Modality, Type } from "@google/genai";
+import { PresetSelector } from './components/PresetSelector';
+import { getPresetById } from './utils/scriptPresets';
+import { buildScriptPrompt } from './utils/promptBuilder';
 
 // @ts-ignore
 const JSZip = window.JSZip;
@@ -716,9 +719,20 @@ interface ScriptGeneratorModalProps {
     onClose: () => void;
     onGenerate: (idea: string, count: number) => Promise<void>;
     isGenerating: boolean;
+    activePresetId: string;
+    customPresets: ScriptPreset[];
+    onPresetChange: (presetId: string) => void;
 }
 
-const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({ isOpen, onClose, onGenerate, isGenerating }) => {
+const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({
+    isOpen,
+    onClose,
+    onGenerate,
+    isGenerating,
+    activePresetId,
+    customPresets,
+    onPresetChange
+}) => {
     const [idea, setIdea] = useState('');
     const [sceneCount, setSceneCount] = useState(5);
 
@@ -732,6 +746,13 @@ const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({ isOpen, onC
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Viết Kịch Bản AI - Cinematic Pro">
             <div className="space-y-4">
+                {/* Preset Selector */}
+                <PresetSelector
+                    activePresetId={activePresetId}
+                    customPresets={customPresets}
+                    onSelect={onPresetChange}
+                />
+
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">Ý tưởng câu chuyện</label>
                     <textarea
@@ -2048,51 +2069,57 @@ const App: React.FC = () => {
 
         setIsScriptGenerating(true);
 
-        const availableCharacters = state.characters
-            .filter(c => c.name.trim() !== '')
-            .map(c => ({ name: c.name, id: c.id }));
-
-        const characterListString = JSON.stringify(availableCharacters, null, 2);
-
         try {
+            // Get active preset
+            const activePreset = getPresetById(state.activeScriptPreset, state.customScriptPresets);
+            if (!activePreset) {
+                throw new Error("Preset not found");
+            }
+
+            // Build prompt using preset
+            const prompt = buildScriptPrompt(idea, activePreset, state.characters, count);
+
+            console.log('🎬 Generating script with preset:', activePreset.name);
+            console.log('Prompt:', prompt);
+
             const ai = new GoogleGenAI({ apiKey });
-            const prompt = `
-            Act as a world-class Film Director. Create a strict storyboard script of EXACTLY ${count} scenes for this story: "${idea}".
 
-            **CHARACTERS (ID):**
-            ${characterListString}
+            // Dynamic JSON schema based on preset
+            const schemaProperties: any = {
+                scene_number: { type: Type.STRING },
+                prompt_name: { type: Type.STRING },
+                visual_description: { type: Type.STRING },
+                character_ids: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                }
+            };
 
-            **DIRECTORIAL RULES (FILM GRAMMAR):**
-            
-            1.  **BLOCKING & SPATIAL RELATION:** 
-                *   Define exactly where characters are standing relative to each other (e.g., "A stands left, B stands right").
-                *   Maintain 180-degree rule logic.
+            // Add fields based on preset format
+            if (activePreset.outputFormat.hasDialogue) {
+                schemaProperties.dialogues = {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            characterName: { type: Type.STRING },
+                            line: { type: Type.STRING }
+                        }
+                    }
+                };
+            }
 
-            2.  **CAMERA ANGLES FOR DIALOGUE:**
-                *   **MANDATORY:** If two characters are talking, you MUST use "Over-the-Shoulder (OTS) Shot" or "Shot-Reverse-Shot".
-                *   Example: "OTS from behind [Character A], looking at [Character B]'s face."
-                *   Never use generic "Medium shot" for intense dialogue; be specific.
+            if (activePreset.outputFormat.hasNarration) {
+                schemaProperties.voiceover = { type: Type.STRING };
+            }
 
-            3.  **VISUAL CONTINUITY:**
-                *   Explicitly describe the background in a way that allows reuse. 
-                *   Example: "The SAME neon-lit alleyway from Scene 1, but looking towards the exit."
+            if (activePreset.outputFormat.hasCameraAngles) {
+                schemaProperties.camera_angle = { type: Type.STRING };
+            }
 
-            4.  **SMART ASSIGNMENT:**
-                *   Return 'character_ids' for who is VISIBLE in the shot.
-                *   Cut-aways/Inserts = Empty ID list [].
-
-            **OUTPUT FORMAT (JSON):**
-                *   **scene_number**: "1", "2"
-                *   **english_dialogue**: Dialogue text.
-                *   **vietnamese_dialogue**: Translation.
-                *   **prompt_name**: Scene title.
-                *   **visual_context**: The Image Gen Prompt. Structure:
-                    "[Shot Type: e.g. OTS, Wide, Low Angle] of [Subject + Blocking]. [Action]. [Lighting/Time]. [Lens/Focus]. [Environment details]. [Specific Props if needed]"
-                    *Make sure 'Over-the-Shoulder' is explicitly written in visual_context for dialogue scenes.*
-                *   **character_ids**: ["id_..."]
-
-            Generate strict JSON array.
-            `;
+            // Legacy fields for backward compatibility
+            schemaProperties.vietnamese_dialogue = { type: Type.STRING };
+            schemaProperties.english_dialogue = { type: Type.STRING };
 
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
@@ -2103,18 +2130,8 @@ const App: React.FC = () => {
                         type: Type.ARRAY,
                         items: {
                             type: Type.OBJECT,
-                            properties: {
-                                scene_number: { type: Type.STRING },
-                                english_dialogue: { type: Type.STRING },
-                                vietnamese_dialogue: { type: Type.STRING },
-                                prompt_name: { type: Type.STRING },
-                                visual_context: { type: Type.STRING },
-                                character_ids: {
-                                    type: Type.ARRAY,
-                                    items: { type: Type.STRING }
-                                }
-                            },
-                            required: ["scene_number", "visual_context", "vietnamese_dialogue", "prompt_name", "character_ids"]
+                            properties: schemaProperties,
+                            required: ["scene_number", "visual_description", "prompt_name", "character_ids"]
                         }
                     }
                 }
@@ -2122,13 +2139,25 @@ const App: React.FC = () => {
 
             const generatedScenesRaw = JSON.parse(response.text || '[]');
 
+            console.log('✅ Generated scenes:', generatedScenesRaw);
+
+            // Parse scenes with structured fields
             const newScenes: Scene[] = generatedScenesRaw.map((item: any) => ({
                 id: generateId(),
                 sceneNumber: item.scene_number || '',
-                language1: item.english_dialogue || '',
-                vietnamese: item.vietnamese_dialogue || '',
                 promptName: item.prompt_name || '',
-                contextDescription: item.visual_context || '',
+
+                // Legacy fields (maintain backward compatibility)
+                vietnamese: item.vietnamese_dialogue || item.voiceover || '',
+                language1: item.english_dialogue || '',
+                contextDescription: item.visual_description || item.visual_context || '',
+
+                // Structured fields (new)
+                voiceover: item.voiceover,
+                dialogues: item.dialogues || [],
+                cameraAngle: item.camera_angle,
+                visualDescription: item.visual_description || item.visual_context,
+
                 characterIds: item.character_ids || [],
                 generatedImage: null,
                 veoPrompt: '',
@@ -2141,7 +2170,7 @@ const App: React.FC = () => {
                     ...s,
                     scenes: [...s.scenes, ...newScenes]
                 }));
-                alert(`Đạo diễn đã hoàn tất kịch bản với ${newScenes.length} phân cảnh chi tiết (Blocking, OTS)!`);
+                alert(`✨ Đã tạo ${newScenes.length} cảnh với preset "${activePreset.name}"!`);
             } else {
                 throw new Error("Không có dữ liệu phân cảnh nào được tạo.");
             }
@@ -3116,6 +3145,9 @@ const App: React.FC = () => {
                 onClose={() => setScriptModalOpen(false)}
                 onGenerate={handleGenerateScript}
                 isGenerating={isScriptGenerating}
+                activePresetId={state.activeScriptPreset}
+                customPresets={state.customScriptPresets}
+                onPresetChange={(presetId) => updateStateAndRecord(s => ({ ...s, activeScriptPreset: presetId }))}
             />
             <CharacterGeneratorModal
                 isOpen={charGenState.isOpen}
