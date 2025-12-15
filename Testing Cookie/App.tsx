@@ -542,18 +542,20 @@ const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = ({ isOpe
                 }
 
                 if (genyuImage) {
-                    setGeneratedImage(genyuImage);
+                    // Auto-save to character master image (same as Gemini flow)
+                    onSave(genyuImage);
+                    alert('✅ Character generated successfully (Genyu)!');
+                    console.log('✅ Genyu character auto-saved to master image');
                 } else {
                     let errorMsg = `Cannot find image URL. Keys: ${Object.keys(data).join(', ')}`;
                     if (data.media && Array.isArray(data.media) && data.media.length > 0) {
                         const m = data.media[0];
                         errorMsg += `. Media[0] Keys: ${Object.keys(m).join(', ')}`;
-                        if (m.image && typeof m.image === 'object') {
-                            errorMsg += `. Image Keys: ${Object.keys(m.image).join(', ')}`;
-                        }
+                        if (m.image) errorMsg += `. Image Keys: ${Object.keys(m.image).join(', ')}`;
                     }
                     if (data.submissionResults) errorMsg += `. Has SubResults.`;
-
+                    setError(errorMsg);
+                    alert(`❌ ${errorMsg}`);
                     throw new Error(errorMsg);
                 }
 
