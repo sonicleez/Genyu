@@ -6,7 +6,7 @@ import { useHotkeys } from './hooks/useHotkeys';
 import { saveProject, openProject } from './utils/fileUtils';
 import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { PresetSelector } from './components/PresetSelector';
-import { getPresetById } from './utils/scriptPresets';
+import { getPresetById, createCustomPreset } from './utils/scriptPresets';
 import { buildScriptPrompt } from './utils/promptBuilder';
 import { AdvancedImageEditor } from './components/AdvancedImageEditor';
 import Modal from './components/Modal';
@@ -20,7 +20,7 @@ const JSZip = window.JSZip;
 const XLSX = window.XLSX;
 
 
-const APP_NAME = "Khung Ứng Dụng";
+const APP_NAME = "Scene Director";
 const PRIMARY_GRADIENT = "from-orange-600 to-red-600";
 const PRIMARY_GRADIENT_HOVER = "from-orange-500 to-red-500";
 
@@ -43,37 +43,37 @@ const GLOBAL_STYLES = [
     {
         value: 'cinematic-realistic',
         label: 'Cinematic Realistic (Phim điện ảnh)',
-        prompt: 'Cinematic movie screengrab, shot on Arri Alexa, photorealistic, 8k, highly detailed texture, dramatic lighting, shallow depth of field, color graded, film grain.'
+        prompt: 'Cinematic movie screengrab, shot on Arri Alexa, photorealistic, 8k, highly detailed texture, dramatic lighting, shallow depth of field, color graded, film grain, masterpiece, award winning, trending on artstation, aesthetics, highly detailed, sharp focus.'
     },
     {
         value: '3d-pixar',
         label: '3D Animation (Pixar/Disney)',
-        prompt: '3D render style, Pixar animation style, octane render, unreal engine 5, cute, vibrant lighting, soft smooth textures, expressive, volumetric lighting, masterpiece.'
+        prompt: '3D render style, Pixar animation style, octane render, unreal engine 5, cute, vibrant lighting, soft smooth textures, expressive, volumetric lighting, masterpiece, redshift, disney pixar style, high fidelity, 8k.'
     },
     {
         value: 'anime-makoto',
         label: 'Anime (Makoto Shinkai Style)',
-        prompt: 'Anime style, Makoto Shinkai art style, high quality 2D animation, beautiful sky, detailed background, vibrant colors, emotional atmosphere, cell shading.'
+        prompt: 'Anime style, Makoto Shinkai art style, high quality 2D animation, beautiful sky, detailed background, vibrant colors, emotional atmosphere, cell shading, masterpiece, best quality, official art, key visual, 4k, detailed illustration.'
     },
     {
         value: 'vintage-film',
         label: 'Vintage 1980s Film (Retro)',
-        prompt: '1980s vintage movie look, film grain, retro aesthetic, warm tones, soft focus, kodak portra 400, nostalgia atmosphere.'
+        prompt: '1980s vintage movie look, film grain, retro aesthetic, warm tones, soft focus, kodak portra 400, nostalgia atmosphere, analog photography, grainy, nostalgic, classic movie.'
     },
     {
         value: 'cyberpunk',
         label: 'Cyberpunk / Sci-Fi',
-        prompt: 'Cyberpunk aesthetic, neon lighting, dark atmosphere, futuristic, high contrast, wet streets, technological details, blade runner style.'
+        prompt: 'Cyberpunk aesthetic, neon lighting, dark atmosphere, futuristic, high contrast, wet streets, technological details, blade runner style, futuristic, glowing neon, high tech, intricate details, masterpiece.'
     },
     {
         value: 'watercolor',
         label: 'Watercolor / Artistic',
-        prompt: 'Watercolor painting style, soft edges, artistic, painterly, dreamy atmosphere, paper texture, pastel colors.'
+        prompt: 'Watercolor painting style, soft edges, artistic, painterly, dreamy atmosphere, paper texture, pastel colors, traditional medium, wet on wet, masterpiece, artistic, detailed.'
     },
     {
         value: 'dark-fantasy',
         label: 'Dark Fantasy (Game Style)',
-        prompt: 'Dark fantasy art, elden ring style, gritty, atmospheric, ominous lighting, detailed armor and textures, epic scale, oil painting aesthetic.'
+        prompt: 'Dark fantasy art, elden ring style, gritty, atmospheric, ominous lighting, detailed armor and textures, epic scale, oil painting aesthetic, masterpiece, oil painting, intricate, ominous, highly detailed, trending on artstation.'
     }
 ];
 
@@ -139,6 +139,19 @@ const TRANSITION_TYPES = [
     { value: 'j-cut', label: 'J-Cut', hint: 'Audio precedes visual' },
 ];
 
+// Veo 3.1 Mode Options
+const VEO_MODES = [
+    { value: 'image-to-video', label: '🎬 Image → Video', hint: 'Một ảnh tạo video' },
+    { value: 'start-end-frame', label: '🎞️ Start/End Frame', hint: 'Hai ảnh làm điểm đầu & cuối' },
+];
+
+const IMAGE_ROLES = [
+    { value: 'single', label: '📷 Single Image', color: 'gray' },
+    { value: 'start-frame', label: '🟢 Start Frame', color: 'green' },
+    { value: 'end-frame', label: '🔴 End Frame', color: 'red' },
+];
+
+
 const IMAGE_MODELS = [
     { value: 'gemini-2.5-flash-image', label: 'Google Nano Banana (Fast)' },
     { value: 'gemini-3-pro-image-preview', label: 'Google Nano Banana Pro (High Quality)' },
@@ -164,6 +177,8 @@ const INITIAL_STATE: ProjectState = {
         masterImage: null,
         faceImage: null,
         bodyImage: null,
+        sideImage: null,
+        backImage: null,
         props: [
             { id: generateId(), name: '', image: null },
             { id: generateId(), name: '', image: null },
@@ -571,29 +586,7 @@ const GenyuTokenModal: React.FC<GenyuTokenModalProps> = ({ isOpen, onClose, toke
     );
 };
 
-interface CoffeeModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    apiKey: string;
-}
-const CoffeeModal: React.FC<CoffeeModalProps> = ({ isOpen, onClose }) => (
-    <Modal isOpen={isOpen} onClose={onClose} title="Cho @Mrsonic30 1 follow ">
-        <p className="text-gray-400 mb-4 text-center">Nếu bạn thấy những chia sẻ của mình hữu ích!</p>
-        <div className="flex flex-col items-center">
-            <img src="N/a images" alt="QR Code for coffee" className="w-64 h-64 rounded-lg border-2 border-gray-700" />
-            <p className="text-xs text-gray-500 mt-4">Đổi nội dung bong bóng này tùy theo nhu cầu của bạn.</p>
-        </div>
-    </Modal>
-);
 
-interface CoffeeButtonProps {
-    onClick: () => void;
-}
-const CoffeeButton: React.FC<CoffeeButtonProps> = ({ onClick }) => (
-    <button onClick={onClick} className={`fixed bottom-6 right-6 w-16 h-16 rounded-full flex items-center justify-center text-white text-3xl shadow-lg transition-transform hover:scale-110 bg-gradient-to-br ${PRIMARY_GRADIENT}`}>
-        ☕
-    </button>
-);
 
 // --- Character Generator Modal ---
 interface CharacterGeneratorModalProps {
@@ -664,7 +657,7 @@ MANDATORY REQUIREMENTS:
 CRITICAL: The style must be STRICTLY enforced. Do not blend styles or deviate from the specified aesthetic.
             `.trim();
 
-            if (genyuToken) {
+            if (!apiKey && genyuToken) {
                 // >>> ROUTE 1: GENYU PROXY <<<
                 console.log("Using Genyu Proxy for Character...");
 
@@ -751,8 +744,7 @@ CRITICAL: The style must be STRICTLY enforced. Do not blend styles or deviate fr
                     contents: { parts: [{ text: fullPrompt }] },
                     config: {
                         imageConfig: {
-                            aspectRatio: aspectRatio,
-                            imageSize: resolution
+                            aspectRatio: aspectRatio
                         }
                     }
                 });
@@ -897,11 +889,11 @@ CRITICAL: The style must be STRICTLY enforced. Do not blend styles or deviate fr
                                     updateCharacter(charId, { isAnalyzing: true });
                                 }
 
-                                // Close modal immediately
-                                onClose();
-                                setPrompt(''); // Clear input
+                                // DO NOT Close modal immediately - let it show progress
+                                // onClose();
+                                // setPrompt(''); 
 
-                                // Trigger generation in background
+                                // Trigger generation
                                 handleGenerate();
                             }}
                             disabled={isGenerating || !prompt}
@@ -946,6 +938,9 @@ interface ScriptGeneratorModalProps {
     onPresetChange: (presetId: string) => void;
     characters: Character[];
     products: Product[];
+    customInstruction?: string;
+    onCustomInstructionChange?: (val: string) => void;
+    onAddPreset: (preset: ScriptPreset) => void;
 }
 
 const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({
@@ -957,10 +952,52 @@ const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({
     customPresets,
     onPresetChange,
     characters,
-    products
+    products,
+    customInstruction,
+    onCustomInstructionChange,
+    onAddPreset
 }) => {
     const [idea, setIdea] = useState('');
     const [sceneCount, setSceneCount] = useState(5);
+    const [isCreatingPreset, setIsCreatingPreset] = useState(false);
+    // Custom Preset State
+    const [newPresetName, setNewPresetName] = useState('');
+    const [newPresetDesc, setNewPresetDesc] = useState('');
+    const [newPresetSystemPrompt, setNewPresetSystemPrompt] = useState('');
+    const [newPresetTone, setNewPresetTone] = useState('');
+
+    const handlePresetSelect = (id: string) => {
+        if (id === 'create_custom') {
+            setIsCreatingPreset(true);
+            setNewPresetName('');
+            setNewPresetDesc('');
+            setNewPresetSystemPrompt('');
+            setNewPresetTone('');
+        } else {
+            onPresetChange(id);
+        }
+    };
+
+    const handleSaveNewPreset = () => {
+        if (!newPresetName.trim() || !newPresetSystemPrompt.trim()) {
+            alert("Tên và System Prompt là bắt buộc!");
+            return;
+        }
+        const newPreset = createCustomPreset({
+            name: newPresetName,
+            description: newPresetDesc,
+            category: 'custom',
+            icon: '✨',
+            systemPrompt: newPresetSystemPrompt,
+            outputFormat: { hasDialogue: true, hasNarration: true, hasCameraAngles: true, sceneStructure: 'custom' },
+            toneKeywords: newPresetTone.split(/[,;]/).map(s => s.trim()).filter(Boolean),
+            sceneGuidelines: 'Tự do sáng tạo theo System Prompt.',
+            exampleOutput: 'Không có ví dụ (Custom).'
+        });
+        onAddPreset(newPreset);
+        onPresetChange(newPreset.id); // Auto select
+        setIsCreatingPreset(false);
+    };
     const [selectedCharacterIds, setSelectedCharacterIds] = useState<string[]>([]);
     const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
 
@@ -1001,11 +1038,53 @@ const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({
         <Modal isOpen={isOpen} onClose={onClose} title="Viết Kịch Bản AI - Cinematic Pro">
             <div className="space-y-4">
                 {/* Preset Selector */}
-                <PresetSelector
-                    activePresetId={activePresetId}
-                    customPresets={customPresets}
-                    onSelect={onPresetChange}
-                />
+                {/* Preset Selector or Creator */}
+                {!isCreatingPreset ? (
+                    <PresetSelector
+                        activePresetId={activePresetId}
+                        customPresets={customPresets}
+                        onSelect={handlePresetSelect}
+                    />
+                ) : (
+                    <div className="bg-gray-800/80 p-4 rounded-lg border border-brand-orange/50 animate-fade-in space-y-3">
+                        <div className="flex justify-between items-center text-brand-orange font-bold text-sm">
+                            <span>✨ Tạo Thể Loại Mới</span>
+                            <button onClick={() => setIsCreatingPreset(false)} className="text-gray-400 hover:text-white">✕</button>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Tên thể loại (VD: Phim Kinh Dị, TVC Ngắn)"
+                            value={newPresetName}
+                            onChange={e => setNewPresetName(e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:border-brand-orange focus:outline-none"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Mô tả ngắn gọn"
+                            value={newPresetDesc}
+                            onChange={e => setNewPresetDesc(e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:border-brand-orange focus:outline-none"
+                        />
+                        <textarea
+                            placeholder="System Prompt (Quan trọng nhất): Hướng dẫn AI viết như thế nào. VD: 'Viết kịch bản phim kinh dị với jump scares, nhịp độ chậm...'"
+                            value={newPresetSystemPrompt}
+                            onChange={e => setNewPresetSystemPrompt(e.target.value)}
+                            rows={3}
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:border-brand-orange focus:outline-none"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Tone/Mood (VD: Scary, dark, intense - Ngăn cách bằng dấu phẩy)"
+                            value={newPresetTone}
+                            onChange={e => setNewPresetTone(e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:border-brand-orange focus:outline-none"
+                        />
+                        <div className="flex justify-end gap-2 pt-2">
+                            <button onClick={() => setIsCreatingPreset(false)} className="px-3 py-1.5 text-xs text-gray-300 hover:text-white">Hủy</button>
+                            <button onClick={handleSaveNewPreset} className="px-3 py-1.5 text-xs font-bold text-white bg-brand-orange rounded hover:bg-orange-600">Lưu Preset</button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Character Selection */}
                 <div>
@@ -1065,9 +1144,20 @@ const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({
                         value={idea}
                         onChange={(e) => setIdea(e.target.value)}
                         placeholder="VD: Một cuộc rượt đuổi nghẹt thở dưới mưa neon, nhân vật chính bị thương..."
-                        rows={3}
-                        className="w-full bg-gray-800 border border-gray-600 rounded-md text-white p-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                        className="w-full h-24 px-4 py-3 bg-gray-800 border border-brand-green/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent resize-none"
                     />
+                    <div className="space-y-2 mt-3">
+                        <label className="text-sm font-semibold text-gray-300">
+                            Hướng dẫn bổ sung cho AI (Meta Tokens - Tùy chọn)
+                        </label>
+                        <textarea
+                            value={customInstruction || ''}
+                            onChange={(e) => onCustomInstructionChange?.(e.target.value)}
+                            placeholder="VD: Viết theo phong cách hài hước, dồn dập, tập trung vào thoại..."
+                            className="w-full h-16 px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-500 resize-none"
+                        />
+                        <p className="text-[10px] text-gray-500">Nếu để trống, AI sẽ tự viết theo logic của Preset đã chọn.</p>
+                    </div>
                     <p className="text-xs text-gray-500 mt-1">AI sẽ tính toán Blocking (vị trí đứng), Góc máy (OTS, Low angle) và Khớp nối bối cảnh.</p>
                 </div>
                 <div>
@@ -1220,7 +1310,7 @@ const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ isOpen, onClose, im
 
 // --- New Components ---
 const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <h2 className="text-3xl font-bold text-center mb-8 bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-green-200">{children}</h2>
+    <h2 className="text-3xl font-bold text-left mb-8 bg-clip-text text-transparent bg-gradient-to-r from-brand-orange to-brand-red">{children}</h2>
 );
 
 
@@ -1417,10 +1507,24 @@ interface SceneRowProps {
     updateScene: (id: string, updates: Partial<Scene>) => void;
     removeScene: (id: string) => void;
     generateImage: () => void;
+    generateEndFrame: () => void;
     openImageViewer: () => void;
 }
 
-const SceneRow: React.FC<SceneRowProps> = ({ scene, index, characters, products, updateScene, removeScene, generateImage, openImageViewer }) => {
+const SceneRow: React.FC<SceneRowProps> = ({ scene, index, characters, products, updateScene, removeScene, generateImage, generateEndFrame, openImageViewer }) => {
+    const endFrameInputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleEndFrameUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                updateScene(scene.id, { endFrameImage: reader.result as string });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     return (
         <div className="grid md:grid-cols-12 gap-4 items-start bg-gray-800/30 p-4 rounded-lg border border-gray-700 hover:border-gray-500 transition-all group/row">
             {/* Scene Number */}
@@ -1476,6 +1580,7 @@ const SceneRow: React.FC<SceneRowProps> = ({ scene, index, characters, products,
                 {/* Per-Scene Cinematography Overrides - IMPROVED SIZE */}
                 <div className="space-y-1.5 bg-gray-900/60 p-2 rounded border border-gray-700/50">
                     <div className="text-[9px] text-gray-500 font-semibold">📹 Cinematography</div>
+                    {/* Camera Angle / Shot Type */}
                     <select
                         value={scene.cameraAngleOverride || ''}
                         onChange={(e) => updateScene(scene.id, { cameraAngleOverride: e.target.value })}
@@ -1485,28 +1590,66 @@ const SceneRow: React.FC<SceneRowProps> = ({ scene, index, characters, products,
                         {CAMERA_ANGLES.map(angle => (
                             <option key={angle.value} value={angle.value}>🎬 {angle.label}</option>
                         ))}
+                        <option value="custom" className="text-brand-orange font-bold">✎ Custom Angle...</option>
                     </select>
+                    {scene.cameraAngleOverride === 'custom' && (
+                        <input
+                            type="text"
+                            value={scene.customCameraAngle || ''}
+                            onChange={(e) => updateScene(scene.id, { customCameraAngle: e.target.value })}
+                            placeholder="VD: Low angle, Hero shot..."
+                            className="w-full bg-gray-900 border border-brand-orange rounded px-2 py-1 text-[10px] text-white focus:outline-none"
+                        />
+                    )}
+
                     <div className="grid grid-cols-2 gap-1.5">
-                        <select
-                            value={scene.lensOverride || ''}
-                            onChange={(e) => updateScene(scene.id, { lensOverride: e.target.value })}
-                            className="bg-gray-800 text-[11px] text-gray-300 border border-gray-600 rounded px-2 py-1 focus:border-brand-orange"
-                            title="Lens"
-                        >
-                            {LENS_OPTIONS.map(lens => (
-                                <option key={lens.value} value={lens.value}>🔭 {lens.label}</option>
-                            ))}
-                        </select>
-                        <select
-                            value={scene.transitionType || ''}
-                            onChange={(e) => updateScene(scene.id, { transitionType: e.target.value })}
-                            className="bg-gray-800 text-[11px] text-purple-300 border border-purple-800/50 rounded px-2 py-1 focus:border-purple-500"
-                            title="Transition"
-                        >
-                            {TRANSITION_TYPES.map(t => (
-                                <option key={t.value} value={t.value}>✂️ {t.label}</option>
-                            ))}
-                        </select>
+                        {/* Lens */}
+                        <div className="space-y-1">
+                            <select
+                                value={scene.lensOverride || ''}
+                                onChange={(e) => updateScene(scene.id, { lensOverride: e.target.value })}
+                                className="w-full bg-gray-800 text-[11px] text-gray-300 border border-gray-600 rounded px-2 py-1 focus:border-brand-orange"
+                                title="Lens"
+                            >
+                                {LENS_OPTIONS.map(lens => (
+                                    <option key={lens.value} value={lens.value}>🔭 {lens.label}</option>
+                                ))}
+                                <option value="custom" className="text-brand-orange font-bold">✎ Custom...</option>
+                            </select>
+                            {scene.lensOverride === 'custom' && (
+                                <input
+                                    type="text"
+                                    value={scene.customLensOverride || ''}
+                                    onChange={(e) => updateScene(scene.id, { customLensOverride: e.target.value })}
+                                    placeholder="VD: 100mm Macro"
+                                    className="w-full bg-gray-900 border border-brand-orange rounded px-2 py-1 text-[10px] text-white focus:outline-none"
+                                />
+                            )}
+                        </div>
+
+                        {/* Transition */}
+                        <div className="space-y-1">
+                            <select
+                                value={scene.transitionType || ''}
+                                onChange={(e) => updateScene(scene.id, { transitionType: e.target.value })}
+                                className="w-full bg-gray-800 text-[11px] text-purple-300 border border-purple-800/50 rounded px-2 py-1 focus:border-purple-500"
+                                title="Transition"
+                            >
+                                {TRANSITION_TYPES.map(t => (
+                                    <option key={t.value} value={t.value}>✂️ {t.label}</option>
+                                ))}
+                                <option value="custom" className="text-brand-orange font-bold">✎ Custom...</option>
+                            </select>
+                            {scene.transitionType === 'custom' && (
+                                <input
+                                    type="text"
+                                    value={scene.customTransitionType || ''}
+                                    onChange={(e) => updateScene(scene.id, { customTransitionType: e.target.value })}
+                                    placeholder="VD: Spin blur..."
+                                    className="w-full bg-gray-900 border border-purple-500 rounded px-2 py-1 text-[10px] text-white focus:outline-none"
+                                />
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1573,27 +1716,115 @@ const SceneRow: React.FC<SceneRowProps> = ({ scene, index, characters, products,
 
             {/* Image & Actions */}
             <div className="md:col-span-3 flex flex-col space-y-2">
-                {/* Image Display */}
-                <div
-                    className="relative w-full aspect-video bg-black rounded border border-gray-600 overflow-hidden group cursor-pointer hover:border-green-500 transition-colors"
-                    onClick={() => scene.generatedImage && openImageViewer()}
-                >
-                    {scene.isGenerating && !scene.videoStatus ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/80 z-10">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mb-2"></div>
-                            <span className="text-[10px] text-green-400 animate-pulse">Rendering Image...</span>
-                        </div>
-                    ) : scene.generatedImage ? (
-                        <>
-                            <img src={scene.generatedImage} alt="Generated" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="text-white text-xs font-bold border border-white px-3 py-1 rounded-full backdrop-blur-sm">🔍 Phóng to</span>
+                {/* Veo Mode Selection */}
+                <div className="flex items-center gap-2 bg-gray-900/60 p-1.5 rounded border border-gray-700/50">
+                    <span className="text-[9px] text-gray-500 font-semibold">🎥 Veo:</span>
+                    {VEO_MODES.map(mode => (
+                        <label key={mode.value} className="flex items-center gap-1 cursor-pointer">
+                            <input
+                                type="radio"
+                                name={`veo-mode-${scene.id}`}
+                                value={mode.value}
+                                checked={(scene.veoMode || 'image-to-video') === mode.value}
+                                onChange={() => updateScene(scene.id, {
+                                    veoMode: mode.value as 'image-to-video' | 'start-end-frame',
+                                    imageRole: mode.value === 'start-end-frame' ? 'start-frame' : 'single'
+                                })}
+                                className="w-3 h-3 accent-brand-orange"
+                            />
+                            <span className="text-[10px] text-gray-300">{mode.label}</span>
+                        </label>
+                    ))}
+                </div>
+
+                {/* Image Display with Role Badge */}
+                <div className="flex gap-2">
+                    {/* Main Image (Start Frame or Single) */}
+                    <div
+                        className={`relative flex-1 aspect-video bg-black rounded border overflow-hidden group cursor-pointer transition-colors ${scene.imageRole === 'start-frame' ? 'border-green-500' :
+                            scene.imageRole === 'end-frame' ? 'border-red-500' : 'border-gray-600 hover:border-green-500'
+                            }`}
+                        onClick={() => scene.generatedImage && openImageViewer()}
+                    >
+                        {/* Role Badge */}
+                        {scene.generatedImage && (
+                            <div className={`absolute top-1 left-1 z-20 px-1.5 py-0.5 rounded text-[8px] font-bold ${scene.imageRole === 'start-frame' ? 'bg-green-600 text-white' :
+                                scene.imageRole === 'end-frame' ? 'bg-red-600 text-white' :
+                                    'bg-gray-700 text-gray-300'
+                                }`}>
+                                {scene.imageRole === 'start-frame' ? '🟢 START' :
+                                    scene.imageRole === 'end-frame' ? '🔴 END' : '📷'}
                             </div>
-                        </>
-                    ) : (
-                        <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-xs flex-col">
-                            <span className="text-2xl mb-1">🖼️</span>
-                            <span>Chưa có ảnh</span>
+                        )}
+
+                        {scene.isGenerating && !scene.videoStatus ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/80 z-10">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mb-2"></div>
+                                <span className="text-[10px] text-green-400 animate-pulse">Rendering Image...</span>
+                            </div>
+                        ) : scene.generatedImage ? (
+                            <>
+                                <img src={scene.generatedImage} alt="Generated" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span className="text-white text-xs font-bold border border-white px-3 py-1 rounded-full backdrop-blur-sm">🔍 Phóng to</span>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-xs flex-col">
+                                <span className="text-2xl mb-1">🖼️</span>
+                                <span>{scene.veoMode === 'start-end-frame' ? 'Start Frame' : 'Image'}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* End Frame (only shown when Start/End Frame mode) */}
+                    {scene.veoMode === 'start-end-frame' && (
+                        <div className="relative w-28 aspect-video bg-black rounded border border-red-500/50 overflow-hidden group/end hover:border-red-500 transition-colors">
+                            {/* Hidden file input */}
+                            <input
+                                ref={endFrameInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleEndFrameUpload}
+                                className="hidden"
+                            />
+
+                            {/* End Frame Badge */}
+                            <div className="absolute top-1 left-1 z-20 px-1 py-0.5 rounded text-[7px] font-bold bg-red-600 text-white">
+                                🔴 END
+                            </div>
+
+                            {scene.endFrameImage ? (
+                                <>
+                                    <img src={scene.endFrameImage} alt="End Frame" className="w-full h-full object-cover" />
+                                    {/* Hover overlay with actions */}
+                                    <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-1 opacity-0 group-hover/end:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => updateScene(scene.id, { endFrameImage: null })}
+                                            className="text-[9px] text-red-400 hover:text-red-300"
+                                        >
+                                            ✕ Xóa
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 text-[9px]">
+                                    <div className="flex flex-col items-center gap-1">
+                                        <button
+                                            onClick={() => endFrameInputRef.current?.click()}
+                                            className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-[9px] flex items-center gap-1"
+                                        >
+                                            📁 Upload
+                                        </button>
+                                        <button
+                                            onClick={generateEndFrame}
+                                            className="px-2 py-1 bg-red-900/50 hover:bg-red-800 text-red-300 rounded text-[9px] flex items-center gap-1"
+                                        >
+                                            ✨ AI Gen
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -1653,6 +1884,48 @@ const App: React.FC = () => {
 
     const stateRef = useRef(state); // Ref to hold latest state for async ops
 
+    // --- GEMINI API HELPER ---
+    const callGeminiAPI = async (prompt: string, aspectRatio: string, imageContext: string | null = null): Promise<string | null> => {
+        const apiKey = userApiKey || process.env.API_KEY || state.apiKey;
+        if (!apiKey) return null;
+
+        console.log('[Gemini Gen] 🎨 Calling Gemini API...');
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            // Using logic from working version: defaults to flash-image if not set
+            const modelName = state.imageModel || 'gemini-2.5-flash-image';
+
+            const parts: any[] = [{ text: prompt }];
+
+            // Inject Image Context (Reference) if provided
+            if (imageContext) {
+                console.log('[Gemini Gen] 📎 Using Reference Image...');
+                const base64Data = imageContext.includes('base64,') ? imageContext.split('base64,')[1] : imageContext;
+                const mimeType = imageContext.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+                parts.unshift({ inlineData: { data: base64Data, mimeType } });
+            }
+
+            const response = await ai.models.generateContent({
+                model: modelName,
+                contents: { parts: parts },
+                config: {
+                    imageConfig: {
+                        aspectRatio: aspectRatio
+                    }
+                }
+            });
+
+            const imagePart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+            if (imagePart?.inlineData) {
+                return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+            }
+            return null;
+        } catch (err: any) {
+            console.error('[Gemini Gen] ❌ Error:', err.message);
+            return null;
+        }
+    };
+
     useEffect(() => {
         stateRef.current = state;
     }, [state]);
@@ -1660,7 +1933,7 @@ const App: React.FC = () => {
     const [history, setHistory] = useState<{ past: ProjectState[], future: ProjectState[] }>({ past: [], future: [] });
     const [zoom, setZoom] = useState(1);
     const [isApiKeyModalOpen, setApiKeyModalOpen] = useState(false);
-    const [isCoffeeModalOpen, setCoffeeModalOpen] = useState(false);
+
     const [isScriptModalOpen, setScriptModalOpen] = useState(false);
     const [genyuModalOpen, setGenyuModalOpen] = useState(false); // New State
     const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
@@ -1678,7 +1951,7 @@ const App: React.FC = () => {
 
     // Editing State
     const [isEditorOpen, setIsEditorOpen] = useState(false);
-    const [editingImage, setEditingImage] = useState<{ id: string, image: string, type: 'master' | 'face' | 'body' | 'prop', propIndex?: number } | null>(null);
+    const [editingImage, setEditingImage] = useState<{ id: string, image: string, type: 'master' | 'face' | 'body' | 'prop' | 'side' | 'back', propIndex?: number } | null>(null);
 
     // Character Gen State
     const [charGenState, setCharGenState] = useState<{ isOpen: boolean; charId: string | null }>({ isOpen: false, charId: null });
@@ -1803,6 +2076,8 @@ const App: React.FC = () => {
             masterImage: null,
             faceImage: null,
             bodyImage: null,
+            sideImage: null,
+            backImage: null,
             props: [
                 { id: generateId(), name: '', image: null },
                 { id: generateId(), name: '', image: null },
@@ -1822,12 +2097,14 @@ const App: React.FC = () => {
             alert("Bạn cần ít nhất 1 nhân vật.");
             return;
         }
-        if (confirm("Bạn có chắc muốn xóa nhân vật này?")) {
-            updateStateAndRecord(s => ({
-                ...s,
-                characters: s.characters.filter(c => c.id !== id)
-            }));
-        }
+        setTimeout(() => {
+            if (confirm("Bạn có chắc muốn xóa nhân vật này?")) {
+                updateStateAndRecord(s => ({
+                    ...s,
+                    characters: s.characters.filter(c => c.id !== id)
+                }));
+            }
+        }, 100);
     };
 
     // --- Polling for Google Labs Workflow (Character Images) ---
@@ -1931,9 +2208,11 @@ const App: React.FC = () => {
     };
 
     const deleteProduct = (id: string) => {
-        if (window.confirm('Delete this product?')) {
-            updateStateAndRecord(s => ({ ...s, products: s.products.filter(p => p.id !== id) }));
-        }
+        setTimeout(() => {
+            if (window.confirm('Delete this product?')) {
+                updateStateAndRecord(s => ({ ...s, products: s.products.filter(p => p.id !== id) }));
+            }
+        }, 100);
     };
 
     const updateProduct = (id: string, updates: Partial<Product>) => {
@@ -1997,11 +2276,38 @@ const App: React.FC = () => {
                 productName = json.name;
                 productDescription = json.description;
                 updateProduct(id, { name: json.name, description: json.description });
+
+                // --- GEMINI: GENERATE 5 VIEWS (Parallel) ---
+                console.log("[Product Gen] 📦 Generating 5 views with Gemini...");
+                const referenceImage = `data:${mimeType};base64,${data}`;
+
+                const promptTemplate = (viewInfo: string) => `
+                    (STRICT REFERENCE: EXACT REPLICA) Generate a ${viewInfo} of the product described: ${json.description}.
+                    - INPUT REFERENCE: Use the provided image as the SOURCE of truth.
+                    - CONSTRAINT: Maintain EXACT details, colors, materials, and proportions. NO new inventions.
+                    - VIEW: ${viewInfo}.
+                    - BACKGROUND: Pure Solid White Studio Background.
+                    - STYLE: Product Photography, 8K, Hyper-realistic.
+                `.trim();
+
+                const [front, back, left, right, top] = await Promise.all([
+                    callGeminiAPI(promptTemplate('OFFICIAL FRONT VIEW (0 degrees)'), '1:1', referenceImage),
+                    callGeminiAPI(promptTemplate('OFFICIAL BACK VIEW (180 degrees)'), '1:1', referenceImage),
+                    callGeminiAPI(promptTemplate('OFFICIAL LEFT PROFILE VIEW (90 degrees)'), '1:1', referenceImage),
+                    callGeminiAPI(promptTemplate('OFFICIAL RIGHT PROFILE VIEW (90 degrees)'), '1:1', referenceImage),
+                    callGeminiAPI(promptTemplate('TOP-DOWN BIRD\'S EYE VIEW'), '1:1', referenceImage),
+                ]);
+
+                updateProduct(id, {
+                    views: { front, back, left, right, top },
+                    isAnalyzing: false
+                });
+                return; // Request handled by Gemini
             }
 
-            // 2. Generate 5 Views using Genyu Proxy
+            // 2. Generate 5 Views - Use Genyu proxy ONLY if no Gemini API key
             const genyuToken = state.genyuToken;
-            if (genyuToken) {
+            if (!apiKey && genyuToken) {
                 const viewPrompts = [
                     { key: 'front', prompt: `Product photography, FRONT VIEW of ${productDescription || 'this product'}. Studio lighting, white background, 8K detail, centered, straight-on angle.` },
                     { key: 'back', prompt: `Product photography, BACK VIEW of ${productDescription || 'this product'}. Studio lighting, white background, 8K detail, centered, rear angle showing back side.` },
@@ -2202,37 +2508,100 @@ const App: React.FC = () => {
             // --- STEP 2 & 3: GENERATE IMAGES (Face & Body) ---
             const genyuToken = state.genyuToken;
 
-            // DEBUG CHECKPOINT
-            console.log("DEBUG: GenyuToken in State:", genyuToken ? "YES" : "NO");
+            // Define Prompts (Shared for both Gemini and Genyu)
+            // 0. Get Dynamic Style from Global Configuration
+            const currentStyle = GLOBAL_STYLES.find(s => s.value === state.stylePrompt)?.prompt || "Cinematic photorealistic, 8k, high quality";
 
-            if (genyuToken) {
-                // >>> ROUTE 1: GOOGLE LABS (FX FLOW) - High Quality <<<
-                console.log("Using Google Labs Proxy for Character Gen...");
-                // alert("DEBUG: Starting Google Labs Gen..."); // Temporary Alert
-
-                const facePrompt = `
-                (STRICT REFERENCE ADHERENCE)
-                Create an extreme close-up Face ID portrait of this character: ${json.description}.
+            // Define Prompts (Shared for both Gemini and Genyu)
+            const facePrompt = `
+                (STRICT CAMERA: EXTREME CLOSE-UP - FACE ID)
+                Generate a highly detailed Face ID close-up of this character: ${json.description}.
                 
-                STYLE GUIDE:
-                - VISUAL STYLE: Unreal Engine 5 Render, 8K Ultra HD, hyper-detailed texture.
-                - LIGHTING: Studio rim lighting, soft fill, professional photography.
-                - FRAMING: Center frame, neutral expression, looking straight at camera (Passport style).
-                - BACKGROUND: Pure solid dark grey or white background (Clean for masking).
-                - DETAILS: Focus purely on facial features, eyes, skin texture, and hair. Must look exactly like the description.
+                CAMERA & COMPOSITION:
+                - LENS: 85mm Portrait Prime Lens, Aperture f/2.8 (Sharp eyes, slight bokeh background).
+                - ANGLE: Looking straight at camera (0 degree), Symmetrical Face.
+                - FRAMING: Extreme Close-up (ECU) focusing on head and shoulders. Passport style.
+                - TEXTURE: High fidelity skin/surface texture, detailed eyes and features.
+                - BACKGROUND: Solid, High-Contrast Color (e.g., Deep Grey or Stark White).
+                
+                STYLE: ${currentStyle}
                 `.trim();
 
-                const bodyPrompt = `
-                (STRICT CHARACTER SHEET)
-                Create a full-body character design sheet for: ${json.description}.
+            const bodyPrompt = `
+                (STRICT CAMERA: FULL BODY WIDE SHOT)
+                Generate a Full Body character design sheet (Front View) for: ${json.description}.
                 
-                STYLE GUIDE:
-                - VISUAL STYLE: Same as Face ID (Unreal Engine 5 Render, 8K).
-                - POSE: Static A-Pose or T-Pose (Best for 3D modeling/Reference).
-                - FRAMING: Full body from head to toe, shoes visible.
-                - BACKGROUND: Solid white studio background. NO complex environment.
-                - OUTFIT: Complete, detailed outfit as described.
+                CAMERA & COMPOSITION:
+                - LENS: 50mm Standard Prime Lens, Aperture f/8 (Deep Depth of Field).
+                - ANGLE: Front Facing, Looking straight at camera.
+                - FRAMING: Wide Shot (WS) capturing HEAD TO TOE. Feet and shoes fully visible.
+                - POSE: Static A-Pose or T-Pose.
+                - BACKGROUND: Solid, High-Contrast Color.
+                
+                STYLE: ${currentStyle}
                 `.trim();
+
+            const sidePrompt = `
+                (STRICT CAMERA: FULL BODY SIDE PROFILE)
+                Generate a Full Body Side Profile (Left/Right view) for: ${json.description}.
+                
+                CAMERA & COMPOSITION:
+                - LENS: 50mm Standard Prime Lens, Aperture f/8.
+                - ANGLE: 90 Degree Side View.
+                - FRAMING: Head to Toe.
+                - BACKGROUND: Solid, High-Contrast Color.
+                
+                STYLE: ${currentStyle}
+                `.trim();
+
+            const backPrompt = `
+                (STRICT CAMERA: FULL BODY BACK VIEW)
+                Generate a Full Body Back View for: ${json.description}.
+                
+                CAMERA & COMPOSITION:
+                - LENS: 50mm Standard Prime Lens, Aperture f/8.
+                - ANGLE: 180 Degree Back View.
+                - FRAMING: Head to Toe.
+                - BACKGROUND: Solid, High-Contrast Color.
+                
+                STYLE: ${currentStyle}
+                `.trim();
+
+            if (apiKey) {
+                // >>> ROUTE 1: GEMINI API (PREFERRED) <<<
+                console.log("[Face/Body Gen] 🎨 Using Gemini API (4 Views)...");
+
+                // Execute Parallel
+                try {
+                    // Pass 'image' (Reference Master) to Ensure Consistency
+                    const [faceUrl, bodyUrl, sideUrl, backUrl] = await Promise.all([
+                        callGeminiAPI(facePrompt, "1:1", image),
+                        callGeminiAPI(bodyPrompt, "9:16", image),
+                        callGeminiAPI(sidePrompt, "9:16", image),
+                        callGeminiAPI(backPrompt, "9:16", image)
+                    ]);
+
+                    console.log("[Face/Body Gen] Results:", { face: !!faceUrl, body: !!bodyUrl, side: !!sideUrl, back: !!backUrl });
+
+                    updateStateAndRecord(s => ({
+                        ...s,
+                        characters: s.characters.map(c => c.id === id ? {
+                            ...c,
+                            faceImage: faceUrl || c.faceImage,
+                            bodyImage: bodyUrl || c.bodyImage,
+                            sideImage: sideUrl || c.sideImage,
+                            backImage: backUrl || c.backImage,
+                            isAnalyzing: false, // Done
+                        } : c)
+                    }));
+                } catch (e) {
+                    console.error("Gemini Image Gen Error:", e);
+                    updateCharacter(id, { isAnalyzing: false });
+                }
+
+            } else if (genyuToken) {
+                // >>> ROUTE 2: GOOGLE LABS PROXY (FALLBACK) <<<
+                console.log("[Face/Body Gen] Using Google Labs Proxy (no API key)...");
 
                 // Helper to=call Proxy
                 const callProxy = async (prompt: string, aspect: string): Promise<string | { workflowId: string } | null> => {
@@ -2445,7 +2814,7 @@ const App: React.FC = () => {
     };
 
     // --- Editing Logic ---
-    const openEditor = (id: string, image: string, type: 'master' | 'face' | 'body' | 'prop', propIndex?: number) => {
+    const openEditor = (id: string, image: string, type: 'master' | 'face' | 'body' | 'prop' | 'side' | 'back', propIndex?: number) => {
         setEditingImage({ id, image, type, propIndex });
         setIsEditorOpen(true);
     };
@@ -2467,6 +2836,10 @@ const App: React.FC = () => {
             updateCharacter(id, { faceImage: newImage });
         } else if (type === 'body') {
             updateCharacter(id, { bodyImage: newImage });
+        } else if (type === 'side') {
+            updateCharacter(id, { sideImage: newImage });
+        } else if (type === 'back') {
+            updateCharacter(id, { backImage: newImage });
         }
     };
 
@@ -2587,8 +2960,13 @@ const App: React.FC = () => {
             // Filter selected products
             const activeProducts = (state.products || []).filter(p => selectedProductIds.includes(p.id));
 
+            // Determine effective language
+            const effectiveLanguage = state.scriptLanguage === 'custom'
+                ? (state.customScriptLanguage || 'English')
+                : (state.scriptLanguage === 'vietnamese' ? 'Vietnamese' : 'English');
+
             // Build prompt using preset, characters and products
-            const prompt = buildScriptPrompt(idea, activePreset, activeCharacters, activeProducts, count);
+            const prompt = buildScriptPrompt(idea, activePreset, activeCharacters, activeProducts, count, effectiveLanguage, state.customScriptInstruction);
 
             console.log('🎬 Generating script with preset:', activePreset.name);
             console.log('Prompt:', prompt);
@@ -2601,10 +2979,6 @@ const App: React.FC = () => {
                 prompt_name: { type: Type.STRING },
                 visual_description: { type: Type.STRING },
                 character_ids: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING }
-                },
-                product_ids: {
                     type: Type.ARRAY,
                     items: { type: Type.STRING }
                 }
@@ -2642,19 +3016,31 @@ const App: React.FC = () => {
                 config: {
                     responseMimeType: "application/json",
                     responseSchema: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: schemaProperties,
-                            required: ["scene_number", "visual_description", "prompt_name", "character_ids"]
-                        }
+                        type: Type.OBJECT,
+                        properties: {
+                            detailed_story: { type: Type.STRING },
+                            scenes: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: schemaProperties,
+                                    required: ["scene_number", "visual_description", "prompt_name", "character_ids"]
+                                }
+                            }
+                        },
+                        required: ["detailed_story", "scenes"]
                     }
                 }
             });
 
-            const generatedScenesRaw = JSON.parse(response.text || '[]');
+            const rawText = response.text || '{}';
+            const jsonResponse = JSON.parse(rawText);
+            // Handle both structure formats (array root or object root for backward compat/safety)
+            const generatedScenesRaw = Array.isArray(jsonResponse) ? jsonResponse : (jsonResponse.scenes || []);
+            const detailedStory = jsonResponse.detailed_story || '';
 
-            console.log('✅ Generated scenes:', generatedScenesRaw);
+            console.log('✅ Generated scenes count:', generatedScenesRaw.length);
+            if (detailedStory) console.log('📜 Detailed Story:', detailedStory.substring(0, 50) + '...');
 
             // Parse scenes with structured fields
             const newScenes: Scene[] = generatedScenesRaw.map((item: any) => ({
@@ -2665,7 +3051,7 @@ const App: React.FC = () => {
                 // Legacy fields (maintain backward compatibility)
                 vietnamese: item.vietnamese_dialogue || item.voiceover || '',
                 language1: item.english_dialogue || '',
-                contextDescription: item.visual_description || item.visual_context || '',
+                contextDescription: item.visual_description || item.visual_context,
 
                 // Structured fields (new)
                 voiceover: item.voiceover,
@@ -2700,29 +3086,54 @@ const App: React.FC = () => {
     };
 
     // --- Image Generation Logic ---
-    const performImageGeneration = async (sceneId: string, refinementPrompt?: string) => {
+    const performImageGeneration = async (sceneId: string, refinementPrompt?: string, isEndFrame: boolean = false) => {
         const currentState = stateRef.current; // Use FRESH state
         const currentSceneIndex = currentState.scenes.findIndex(s => s.id === sceneId);
         const sceneToUpdate = currentState.scenes[currentSceneIndex];
         if (!sceneToUpdate) return;
 
         // --- 1. GET GLOBAL STYLE PROMPT ---
-        const selectedStyle = GLOBAL_STYLES.find(s => s.value === currentState.stylePrompt);
-        const styleInstruction = selectedStyle ? selectedStyle.prompt : '';
+        let styleInstruction = '';
+        if (currentState.stylePrompt === 'custom') {
+            styleInstruction = currentState.customStyleInstruction || '';
+        } else {
+            const selectedStyle = GLOBAL_STYLES.find(s => s.value === currentState.stylePrompt);
+            styleInstruction = selectedStyle ? selectedStyle.prompt : '';
+        }
 
         // --- 2. GET CINEMATOGRAPHY SETTINGS ---
-        const cameraModelInfo = CAMERA_MODELS.find(c => c.value === currentState.cameraModel);
-        const cameraPrompt = cameraModelInfo?.prompt || '';
+        let cameraPrompt = '';
+        if (currentState.cameraModel === 'custom') {
+            cameraPrompt = currentState.customCameraModel ? `Shot on ${currentState.customCameraModel}` : '';
+        } else {
+            const cameraModelInfo = CAMERA_MODELS.find(c => c.value === currentState.cameraModel);
+            cameraPrompt = cameraModelInfo?.prompt || '';
+        }
 
         // Lens: use scene override if exists, otherwise global default
         const effectiveLens = sceneToUpdate.lensOverride || currentState.defaultLens || '';
-        const lensInfo = LENS_OPTIONS.find(l => l.value === effectiveLens);
-        const lensPrompt = lensInfo?.prompt || '';
+        let lensPrompt = '';
+
+        if (sceneToUpdate.lensOverride === 'custom') {
+            lensPrompt = sceneToUpdate.customLensOverride ? `Lens: ${sceneToUpdate.customLensOverride}` : '';
+        } else if (effectiveLens === 'custom' || (effectiveLens === '' && currentState.defaultLens === 'custom')) {
+            const customLens = currentState.customDefaultLens || '';
+            lensPrompt = customLens ? `Lens: ${customLens}` : '';
+        } else {
+            const lensInfo = LENS_OPTIONS.find(l => l.value === effectiveLens);
+            lensPrompt = lensInfo?.prompt || '';
+        }
 
         // Camera Angle: use scene override if exists
         const effectiveAngle = sceneToUpdate.cameraAngleOverride || '';
-        const angleInfo = CAMERA_ANGLES.find(a => a.value === effectiveAngle);
-        const anglePrompt = angleInfo ? angleInfo.label : '';
+        let anglePrompt = '';
+
+        if (effectiveAngle === 'custom') {
+            anglePrompt = sceneToUpdate.customCameraAngle || '';
+        } else {
+            const angleInfo = CAMERA_ANGLES.find(a => a.value === effectiveAngle);
+            anglePrompt = angleInfo ? angleInfo.label : '';
+        }
 
         // Meta Tokens: custom or auto-generated
         const activePreset = getPresetById(currentState.activeScriptPreset, currentState.customScriptPresets);
@@ -2740,7 +3151,8 @@ const App: React.FC = () => {
             : '';
 
         // Construct basic prompt with cinematography and meta tokens
-        let finalPrompt = `${styleInstruction}. ${cinematographyPrompt} ${metaTokens}. ${sceneToUpdate.contextDescription}`.trim();
+        // PRIORITY: Camera > Style > Content
+        let finalPrompt = `(STRICT CAMERA: ${cinematographyPrompt}) ${styleInstruction} ${metaTokens}. ${sceneToUpdate.contextDescription}`.trim();
 
         // APPEND BASIC CHARACTER & PROP INFO (Fallback for No-API-Key Users)
         const currentStateSnapshot = stateRef.current;
@@ -2768,10 +3180,14 @@ const App: React.FC = () => {
             const previousScene = currentState.scenes[previousSceneIndex];
             if (previousScene && previousScene.contextDescription) {
                 // Get transition type from previous scene
-                const transitionInfo = previousScene.transitionType
-                    ? TRANSITION_TYPES.find(t => t.value === previousScene.transitionType)
-                    : null;
-                const transitionHint = transitionInfo?.hint || 'smooth visual continuity';
+                // Get transition type from previous scene
+                let transitionHint = 'smooth visual continuity';
+                if (previousScene.transitionType === 'custom') {
+                    transitionHint = previousScene.customTransitionType || transitionHint;
+                } else if (previousScene.transitionType) {
+                    const transitionInfo = TRANSITION_TYPES.find(t => t.value === previousScene.transitionType);
+                    transitionHint = transitionInfo?.hint || transitionHint;
+                }
 
                 // Build continuity prompt
                 const continuityPrompt = `\n\n[FILM CONTINUITY: Previous scene "${previousScene.promptName || 'Scene ' + previousSceneIndex}" showed: ${previousScene.contextDescription.slice(0, 150)}... Transition: ${transitionHint}. Ensure visual coherence and narrative flow.]`;
@@ -2829,7 +3245,8 @@ const App: React.FC = () => {
                     Rewrite this scene description into a detailed Image Generation Prompt.
                     
                     SCENE: "${sceneToUpdate.contextDescription}"
-                    STYLE: ${styleInstruction}
+                    STYLE: ${styleInstruction} ${metaTokens}
+                    CAMERA & LENS (HIGHEST PRIORITY): ${cinematographyPrompt}
                     CHARACTERS: ${charNames}
                     DETAILS:
                     ${characterInstructions}
@@ -2849,39 +3266,46 @@ const App: React.FC = () => {
                     // Collect Multimodal Parts (Text + Images)
                     const directorParts: any[] = [{ text: directorPrompt }];
 
-                    selectedChars.forEach((c) => {
-                        if (c.faceImage) {
-                            const [h, d] = c.faceImage.split(',');
-                            const m = h.match(/:(.*?);/)?.[1] || 'image/jpeg';
-                            directorParts.push({ text: `[Visual Ref: ${c.name} Face]` });
-                            directorParts.push({ inlineData: { data: d, mimeType: m } });
-                        }
-                        if (c.bodyImage) {
-                            const [h, d] = c.bodyImage.split(',');
-                            const m = h.match(/:(.*?);/)?.[1] || 'image/jpeg';
-                            directorParts.push({ text: `[Visual Ref: ${c.name} Outfit]` });
-                            directorParts.push({ inlineData: { data: d, mimeType: m } });
-                        }
-                        if (c.props) {
-                            c.props.forEach(p => {
-                                if (p.image) {
-                                    const [h, d] = p.image.split(',');
-                                    const m = h.match(/:(.*?);/)?.[1] || 'image/jpeg';
-                                    directorParts.push({ text: `[Visual Ref: ${c.name} Prop - ${p.name}]` });
+                    // Helper function to safely add image data
+                    const safeAddImage = (img: string | undefined | null, label: string) => {
+                        if (img && img.startsWith('data:') && img.includes(',')) {
+                            try {
+                                const [h, d] = img.split(',');
+                                const m = h.match(/:(.*?);/)?.[1] || 'image/jpeg';
+                                if (d && d.length > 100) {
+                                    directorParts.push({ text: label });
                                     directorParts.push({ inlineData: { data: d, mimeType: m } });
                                 }
+                            } catch (e) {
+                                console.warn("Could not process image:", label);
+                            }
+                        }
+                    };
+
+                    selectedChars.forEach((c) => {
+                        safeAddImage(c.faceImage, `[Visual Ref: ${c.name} Face]`);
+                        safeAddImage(c.bodyImage, `[Visual Ref: ${c.name} Outfit]`);
+                        if (c.props) {
+                            c.props.forEach(p => {
+                                safeAddImage(p.image, `[Visual Ref: ${c.name} Prop - ${p.name}]`);
                             });
                         }
                     });
 
                     // Add Previous Scene for Continuity if available
-                    if (isContinuityMode && currentSceneIndex > 0 && currentState.scenes[currentSceneIndex - 1].generatedImage) {
+                    if (isContinuityMode && currentSceneIndex > 0) {
                         const prevImg = currentState.scenes[currentSceneIndex - 1].generatedImage;
-                        if (prevImg) {
-                            const [h, d] = prevImg.split(',');
-                            const m = h.match(/:(.*?);/)?.[1] || 'image/jpeg';
-                            directorParts.push({ text: `[Visual Ref: Previous Scene Context]` });
-                            directorParts.push({ inlineData: { data: d, mimeType: m } });
+                        if (prevImg && prevImg.startsWith('data:') && prevImg.includes(',')) {
+                            try {
+                                const [h, d] = prevImg.split(',');
+                                const m = h.match(/:(.*?);/)?.[1] || 'image/jpeg';
+                                if (d && d.length > 100) { // Ensure we have actual data
+                                    directorParts.push({ text: `[Visual Ref: Previous Scene Context]` });
+                                    directorParts.push({ inlineData: { data: d, mimeType: m } });
+                                }
+                            } catch (imgErr) {
+                                console.warn("Could not add previous scene image to prompt");
+                            }
                         }
                     }
 
@@ -2898,14 +3322,19 @@ const App: React.FC = () => {
 
 
             // --- STEP 2: GENERATION ---
+            // --- STEP 2: GENERATION ROUTING ---
             let imageUrl = "";
             const currentResolution = currentState.resolution || '1K';
             const isHighRes = currentResolution === '2K' || currentResolution === '4K';
 
-            // PRIORITY LOGIC:
-            if (genyuToken && !isHighRes) {
-                // >>> ROUTE 1: GENYU PROXY (Only for 1K/Standard) <<<
-                console.log("Using Genyu Proxy for Scene (1K Mode)...");
+            if (apiKey) {
+                // >>> ROUTE 1: GEMINI API (PREFERRED) <<<
+                console.log("[Scene Gen] 🎨 Using Gemini API...");
+                const result = await callGeminiAPI(finalImagePrompt, currentState.aspectRatio);
+                if (result) imageUrl = result;
+            } else if (genyuToken && !isHighRes) {
+                // >>> ROUTE 2: GENYU PROXY (FALLBACK - Only for 1K/Standard) <<<
+                console.log("[Scene Gen] Using Genyu Proxy (no API key, 1K Mode)...");
 
                 let genyuAspect = "IMAGE_ASPECT_RATIO_LANDSCAPE"; // Default 16:9
                 if (currentState.aspectRatio === "9:16") genyuAspect = "IMAGE_ASPECT_RATIO_PORTRAIT";
@@ -3004,16 +3433,21 @@ const App: React.FC = () => {
                     throw new Error(`Cannot find image URL. Keys: ${debugKeys}`);
                 }
 
+                // Save to endFrameImage or generatedImage based on isEndFrame flag
                 setState(s => ({
                     ...s,
                     scenes: s.scenes.map(sc => sc.id === sceneId ? {
                         ...sc,
-                        generatedImage: imageUrl,
-                        mediaId: extractedMediaId,
+                        ...(isEndFrame
+                            ? { endFrameImage: imageUrl }
+                            : { generatedImage: imageUrl, imageRole: sc.veoMode === 'start-end-frame' ? 'start-frame' : 'single' }
+                        ),
+                        mediaId: isEndFrame ? sc.mediaId : extractedMediaId,
                         error: null,
                         isGenerating: false
                     } : sc)
                 }));
+                console.log(isEndFrame ? "🔴 End Frame saved" : "🟢 Start Frame/Image saved");
                 return;
 
 
@@ -3095,11 +3529,20 @@ const App: React.FC = () => {
                 throw new Error("Missing Credentials");
             }
 
-            // Save Result
+            // Save Result (handles both routes)
             setState(s => ({
                 ...s,
-                scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, generatedImage: imageUrl, isGenerating: false, error: null } : sc)
+                scenes: s.scenes.map(sc => sc.id === sceneId ? {
+                    ...sc,
+                    ...(isEndFrame
+                        ? { endFrameImage: imageUrl }
+                        : { generatedImage: imageUrl, imageRole: sc.veoMode === 'start-end-frame' ? 'start-frame' : 'single' }
+                    ),
+                    isGenerating: false,
+                    error: null
+                } : sc)
             }));
+            console.log(isEndFrame ? "🔴 End Frame saved (Gemini)" : "🟢 Image saved (Gemini)");
 
         } catch (error) {
             console.error("Image generation failed:", error);
@@ -3514,20 +3957,52 @@ const App: React.FC = () => {
 
     const handleDownloadAll = () => {
         const zip = new JSZip();
-        const scenesWithImages = state.scenes.filter(s => s.generatedImage);
 
-        if (scenesWithImages.length === 0) {
+        // 1. SCENE MAP IMAGES -> Scenes/
+        const scenesFolder = zip.folder("Scenes");
+        let hasImages = false;
+
+        state.scenes.forEach((scene) => {
+            if (scene.generatedImage) {
+                const imgData = scene.generatedImage.split(',')[1];
+                scenesFolder?.file(`${scene.sceneNumber}.png`, imgData, { base64: true });
+                hasImages = true;
+            }
+        });
+
+        // 2. ASSETS -> Assets/Characters & Assets/Products
+        const assetsFolder = zip.folder("Assets");
+        const charsFolder = assetsFolder?.folder("Characters");
+        const productsFolder = assetsFolder?.folder("Products");
+
+        state.characters.forEach(c => {
+            const cName = slugify(c.name) || c.id;
+            if (c.masterImage) { charsFolder?.file(`${cName}_master.png`, c.masterImage.split(',')[1], { base64: true }); hasImages = true; }
+            if (c.faceImage) { charsFolder?.file(`${cName}_face.png`, c.faceImage.split(',')[1], { base64: true }); hasImages = true; }
+            if (c.bodyImage) { charsFolder?.file(`${cName}_body.png`, c.bodyImage.split(',')[1], { base64: true }); hasImages = true; }
+            if (c.sideImage) { charsFolder?.file(`${cName}_side.png`, c.sideImage.split(',')[1], { base64: true }); hasImages = true; }
+            if (c.backImage) { charsFolder?.file(`${cName}_back.png`, c.backImage.split(',')[1], { base64: true }); hasImages = true; }
+        });
+
+        state.products.forEach(p => {
+            const pName = slugify(p.name) || p.id;
+            if (p.masterImage) { productsFolder?.file(`${pName}_master.png`, p.masterImage.split(',')[1], { base64: true }); hasImages = true; }
+            if (p.views) {
+                if (p.views.front) { productsFolder?.file(`${pName}_front.png`, p.views.front.split(',')[1], { base64: true }); hasImages = true; }
+                if (p.views.back) { productsFolder?.file(`${pName}_back.png`, p.views.back.split(',')[1], { base64: true }); hasImages = true; }
+                if (p.views.left) { productsFolder?.file(`${pName}_left.png`, p.views.left.split(',')[1], { base64: true }); hasImages = true; }
+                if (p.views.right) { productsFolder?.file(`${pName}_right.png`, p.views.right.split(',')[1], { base64: true }); hasImages = true; }
+                if (p.views.top) { productsFolder?.file(`${pName}_top.png`, p.views.top.split(',')[1], { base64: true }); hasImages = true; }
+            }
+        });
+
+        if (!hasImages) {
             alert("Không có ảnh nào để tải xuống.");
             return;
         }
 
-        scenesWithImages.forEach((scene) => {
-            const imgData = scene.generatedImage!.split(',')[1];
-            zip.file(`${scene.sceneNumber}.png`, imgData, { base64: true });
-        });
-
         zip.generateAsync({ type: "blob" }).then(function (content) {
-            const filename = state.projectName ? `${slugify(state.projectName)}.zip` : 'project-images.zip';
+            const filename = state.projectName ? `${slugify(state.projectName)}_full.zip` : 'project-images.zip';
             const link = document.createElement('a');
             link.href = URL.createObjectURL(content);
             link.download = filename;
@@ -3583,7 +4058,7 @@ const App: React.FC = () => {
                 onOpen={handleOpen}
                 onNewProject={handleNewProject}
                 onDownloadAll={handleDownloadAll}
-                canDownload={state.scenes.some(s => s.generatedImage)}
+                canDownload={state.scenes.some(s => s.generatedImage) || state.characters.some(c => c.masterImage) || state.products.some(p => p.masterImage)}
                 isContinuityMode={isContinuityMode}
                 toggleContinuityMode={() => setIsContinuityMode(!isContinuityMode)}
                 onGenyuClick={() => setGenyuModalOpen(true)}
@@ -3595,7 +4070,7 @@ const App: React.FC = () => {
                         <ProjectNameInput value={state.projectName} onChange={handleProjectNameChange} />
 
                         <div className="my-16">
-                            <SectionTitle>Quản lý Nhân vật (Model Sheets)</SectionTitle>
+                            <SectionTitle>Characters Consistency</SectionTitle>
                             <div className="grid md:grid-cols-3 gap-6">
                                 {state.characters.map((char, index) => (
                                     <CharacterCard
@@ -3624,7 +4099,7 @@ const App: React.FC = () => {
 
                         {/* --- PRODUCTS & PROPS SECTION --- */}
                         <div className="my-16">
-                            <SectionTitle>Sản phẩm & Đạo cụ đặc biệt (Product/Props)</SectionTitle>
+                            <SectionTitle>Weapon/Product/Props</SectionTitle>
                             <div className="grid md:grid-cols-3 gap-6">
                                 {state.products?.map((prod, index) => (
                                     <div
@@ -3683,9 +4158,10 @@ const App: React.FC = () => {
                         </div>
 
                         <div className="my-16 p-6 bg-gray-800/50 rounded-lg border border-gray-700">
-                            <SectionTitle>Kịch bản & Phong cách</SectionTitle>
+                            <SectionTitle>Your Styles</SectionTitle>
                             <div className="grid md:grid-cols-3 gap-6 items-start">
                                 <div className="md:col-span-2 space-y-4">
+                                    {/* Row 1: Global Style + Model Images */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-300 mb-2">Phong cách Tổng thể (Global Style)</label>
@@ -3697,38 +4173,47 @@ const App: React.FC = () => {
                                                 {GLOBAL_STYLES.map(style => (
                                                     <option key={style.value} value={style.value}>{style.label}</option>
                                                 ))}
+                                                <option value="custom" className="text-brand-orange font-bold">+ Custom Style (Tự nhập Prompt)...</option>
+                                            </select>
+                                            {state.stylePrompt === 'custom' && (
+                                                <div className="mt-2 animate-fadeIn">
+                                                    <textarea
+                                                        value={state.customStyleInstruction || ''}
+                                                        onChange={e => updateStateAndRecord(s => ({ ...s, customStyleInstruction: e.target.value }))}
+                                                        placeholder="Nhập mô tả phong cách, ánh sáng, màu sắc (VD: Cyberpunk city, neon lights, rain, high contrast, 8k masterpiece...)"
+                                                        className="w-full bg-gray-900/80 text-white px-3 py-2 rounded-md border border-brand-orange text-xs focus:outline-none min-h-[80px]"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">Model Images</label>
+                                            <select
+                                                value={state.imageModel}
+                                                onChange={handleImageModelChange}
+                                                className="w-full bg-gray-700 text-white px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-600 appearance-none"
+                                            >
+                                                {IMAGE_MODELS.map(model => (
+                                                    <option key={model.value} value={model.value}>{model.label}</option>
+                                                ))}
                                             </select>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-300 mb-2">Model tạo ảnh (Cho Scene)</label>
-                                                <select
-                                                    value={state.imageModel}
-                                                    onChange={handleImageModelChange}
-                                                    className="w-full bg-gray-700 text-white px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-600 appearance-none"
-                                                >
-                                                    {IMAGE_MODELS.map(model => (
-                                                        <option key={model.value} value={model.value}>{model.label}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-300 mb-2">Độ phân giải (Resolution)</label>
-                                                <select
-                                                    value={state.resolution || '1K'}
-                                                    onChange={(e) => updateStateAndRecord(s => ({ ...s, resolution: e.target.value }))}
-                                                    className="w-full bg-gray-700 text-white px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-600 appearance-none"
-                                                >
-                                                    <option value="1K">1K (Standard) - Genyu/Gemini</option>
-                                                    <option value="2K">2K (High Res) - Google Pro Only</option>
-                                                    <option value="4K">4K (Ultra) - Google Pro Only</option>
-                                                </select>
-                                            </div>
-                                        </div>
                                     </div>
-                                    <p className="text-xs text-gray-400 mt-2">Áp dụng một "System Prompt" nhất quán cho toàn bộ dự án để tránh lệch tông màu/ánh sáng.</p>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    {/* Row 2: Resolution + Aspect Ratio + Script Language */}
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">Độ phân giải (Resolution)</label>
+                                            <select
+                                                value={state.resolution || '1K'}
+                                                onChange={(e) => updateStateAndRecord(s => ({ ...s, resolution: e.target.value }))}
+                                                className="w-full bg-gray-700 text-white px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-600 appearance-none"
+                                            >
+                                                <option value="1K">1K (Standard) - Genyu/Gemini</option>
+                                                <option value="2K">2K (High Res) - Google Pro Only</option>
+                                                <option value="4K">4K (Ultra) - Google Pro Only</option>
+                                            </select>
+                                        </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-300 mb-2">Tỷ lệ ảnh (Aspect Ratio)</label>
                                             <select
@@ -3748,9 +4233,21 @@ const App: React.FC = () => {
                                                 onChange={handleScriptLanguageChange}
                                                 className="w-full bg-gray-700 text-white px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-600"
                                             >
-                                                <option value="vietnamese">Tiếng Việt (Cột 3)</option>
-                                                <option value="language1">Ngôn ngữ 1 (Cột 2)</option>
+                                                <option value="vietnamese">Tiếng Việt</option>
+                                                <option value="language1">Tiếng Anh (Default)</option>
+                                                <option value="custom" className="text-brand-orange font-bold">+ Custom Language...</option>
                                             </select>
+                                            {state.scriptLanguage === 'custom' && (
+                                                <div className="mt-2 animate-fadeIn">
+                                                    <input
+                                                        type="text"
+                                                        value={state.customScriptLanguage || ''}
+                                                        onChange={e => updateStateAndRecord(s => ({ ...s, customScriptLanguage: e.target.value }))}
+                                                        placeholder="Nhập tên ngôn ngữ (VD: French, Japanese, Spanish...)"
+                                                        className="w-full bg-gray-900/80 text-white px-3 py-2 rounded-md border border-brand-orange text-xs focus:outline-none"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -3764,26 +4261,50 @@ const App: React.FC = () => {
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-400 mb-1.5">Camera Body</label>
                                                 <select
-                                                    value={state.cameraModel || ''}
+                                                    value={state.cameraModel || 'auto'}
                                                     onChange={(e) => updateStateAndRecord(s => ({ ...s, cameraModel: e.target.value }))}
-                                                    className="w-full bg-gray-900 text-white px-2 py-1.5 rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange border border-gray-600"
+                                                    className="w-full bg-gray-700 text-white px-2 py-1.5 rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand-orange border border-gray-600 appearance-none"
                                                 >
                                                     {CAMERA_MODELS.map(cam => (
                                                         <option key={cam.value} value={cam.value}>{cam.label}</option>
                                                     ))}
+                                                    <option value="custom" className="text-brand-orange font-bold">+ Custom Camera...</option>
                                                 </select>
+                                                {state.cameraModel === 'custom' && (
+                                                    <div className="mt-1 animate-fadeIn">
+                                                        <input
+                                                            type="text"
+                                                            value={state.customCameraModel || ''}
+                                                            onChange={e => updateStateAndRecord(s => ({ ...s, customCameraModel: e.target.value }))}
+                                                            placeholder="VD: IMAX 70mm, GoPro Hero 11..."
+                                                            className="w-full bg-gray-900/80 text-white px-2 py-1.5 rounded border border-brand-orange text-[10px] focus:outline-none"
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-400 mb-1.5">Default Lens</label>
                                                 <select
-                                                    value={state.defaultLens || ''}
+                                                    value={state.defaultLens || 'auto'}
                                                     onChange={(e) => updateStateAndRecord(s => ({ ...s, defaultLens: e.target.value }))}
-                                                    className="w-full bg-gray-900 text-white px-2 py-1.5 rounded text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange border border-gray-600"
+                                                    className="w-full bg-gray-700 text-white px-2 py-1.5 rounded text-xs focus:outline-none focus:ring-1 focus:ring-brand-orange border border-gray-600 appearance-none"
                                                 >
                                                     {LENS_OPTIONS.map(lens => (
                                                         <option key={lens.value} value={lens.value}>{lens.label}</option>
                                                     ))}
+                                                    <option value="custom" className="text-brand-orange font-bold">+ Custom Lens...</option>
                                                 </select>
+                                                {state.defaultLens === 'custom' && (
+                                                    <div className="mt-1 animate-fadeIn">
+                                                        <input
+                                                            type="text"
+                                                            value={state.customDefaultLens || ''}
+                                                            onChange={e => updateStateAndRecord(s => ({ ...s, customDefaultLens: e.target.value }))}
+                                                            placeholder="VD: 70-200mm f/2.8, Fisheye 8mm..."
+                                                            className="w-full bg-gray-900/80 text-white px-2 py-1.5 rounded border border-brand-orange text-[10px] focus:outline-none"
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="mt-3">
@@ -3807,7 +4328,7 @@ const App: React.FC = () => {
                                             disabled={isScriptGenerating}
                                             className={`w-full px-6 py-4 font-semibold text-white rounded-lg transition-all duration-300 transform hover:scale-105 flex flex-col items-center justify-center ${isScriptGenerating
                                                 ? 'bg-blue-600/50 cursor-wait'
-                                                : 'bg-gradient-to-r from-blue-500 to-blue-300 hover:from-blue-400 hover:to-blue-200'
+                                                : 'bg-gradient-to-r from-blue-500 to-blue-300 hover:from-blue-400 hover:to-blue-200 shadow-lg shadow-blue-500/20'
                                                 }`}
                                         >
                                             {isScriptGenerating ? (
@@ -3828,7 +4349,7 @@ const App: React.FC = () => {
                                     </div>
                                     <div className="w-full relative">
                                         <input type="file" id="script-upload-input" className="hidden" onChange={handleScriptUpload} accept=".xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
-                                        <button onClick={triggerFileUpload} className={`w-full px-6 py-2 font-semibold text-white rounded-lg bg-gray-700 hover:bg-gray-600 transition-all duration-300`}>
+                                        <button onClick={triggerFileUpload} className={`w-full px-6 py-2 font-semibold text-white rounded-lg bg-gray-700 hover:bg-gray-600 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-gray-700/20`}>
                                             Upload Excel
                                         </button>
                                     </div>
@@ -3838,7 +4359,7 @@ const App: React.FC = () => {
 
                         <div className="my-16">
                             <div className="flex justify-between items-center mb-8">
-                                <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-orange to-brand-red">Bảng trình bày Kịch bản</h2>
+                                <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-orange to-brand-red">Scenes Maps</h2>
                                 <div className="flex items-center space-x-2">
                                     <button onClick={handleGenerateAllImages} disabled={isBatchGenerating} className={`px-4 py-2 font-semibold text-brand-cream rounded-lg bg-gradient-to-r ${PRIMARY_GRADIENT} hover:${PRIMARY_GRADIENT_HOVER} shadow-lg shadow-brand-orange/20 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed`}>
                                         {isBatchGenerating ? 'Đang tạo (Tuần tự)...' : '1. Tạo ảnh hàng loạt'}
@@ -3849,16 +4370,41 @@ const App: React.FC = () => {
                                     <button onClick={handleGenerateAllVideos} disabled={isVideoGenerating} className={`px-4 py-2 font-semibold text-brand-cream rounded-lg bg-gradient-to-r from-brand-brown to-brand-orange hover:from-brand-red hover:to-brand-orange shadow-lg shadow-brand-orange/20 transition-all duration-300 transform hover:scale-105 disabled:opacity-50`}>
                                         {isVideoGenerating ? 'Đang tạo Video...' : '3. Tạo Video (Veo)'}
                                     </button>
-                                    <button onClick={() => {
-                                        const s = state.scenes;
-                                        alert(`Debug Info:\nToken Len: ${state.genyuToken?.length || 0}\nScenes: ${s.length}\nHas MediaId: ${s.filter(x => x.mediaId).length}\nHas Prompt: ${s.filter(x => x.veoPrompt).length}\nHas Video: ${s.filter(x => x.generatedVideo).length}`);
-                                        console.log('Scenes:', s);
-                                    }} className="px-2 py-2 text-brand-orange hover:text-brand-cream border border-brand-brown hover:bg-brand-brown/50 rounded transition-colors">
-                                        🐞
-                                    </button>
+
                                     <button onClick={addScene} className={`px-4 py-2 font-semibold text-brand-cream rounded-lg bg-gradient-to-r ${PRIMARY_GRADIENT} hover:${PRIMARY_GRADIENT_HOVER} shadow-lg shadow-brand-orange/20 transition-all duration-300 transform hover:scale-105`}>+ Thêm Phân đoạn</button>
                                 </div>
                             </div>
+
+                            {/* === DETAILED SCRIPT SECTION (New) === */}
+                            <div className="mb-8 p-6 bg-gray-800/40 rounded-xl border border-gray-700/50 backdrop-blur-sm">
+                                <div className="flex justify-between items-center mb-3">
+                                    <label className="flex items-center text-sm font-bold text-gray-200">
+                                        <span className="text-xl mr-2">📜</span> Kịch bản Chi tiết (Detailed Story)
+                                    </label>
+                                    <span className="text-xs text-brand-orange bg-brand-orange/10 px-2 py-1 rounded">Read-only / Reference</span>
+                                </div>
+                                <textarea
+                                    value={state.detailedScript || ''}
+                                    onChange={(e) => updateStateAndRecord(s => ({ ...s, detailedScript: e.target.value }))}
+                                    placeholder="Nội dung cốt truyện chi tiết sẽ được hiển thị ở đây giúp bạn nắm bắt mạch chuyện..."
+                                    className="w-full h-48 bg-gray-900/50 text-gray-300 px-4 py-3 rounded-lg border border-gray-700/50 focus:outline-none focus:ring-1 focus:ring-brand-orange text-sm leading-relaxed scrollbar-thin scrollbar-thumb-gray-600 font-mono"
+                                />
+                                <div className="flex justify-end mt-2">
+                                    <button
+                                        onClick={() => {
+                                            if (confirm('⚠️ NGUY HIỂM: Bạn có chắc chắn muốn xóa toàn bộ Kịch bản chi tiết và Danh sách các cảnh không?\n\nHành động này không thể hoàn tác!')) {
+                                                updateStateAndRecord(s => ({ ...s, scenes: [], detailedScript: '' }));
+                                            }
+                                        }}
+                                        className="flex items-center space-x-2 px-3 py-1.5 text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded border border-red-900/50 transition-colors"
+                                        title="Xóa toàn bộ kịch bản và scene để làm lại từ đầu"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <span>Xóa sạch & Làm mới (Clean All)</span>
+                                    </button>
+                                </div>
+                            </div>
+
                             <div className="hidden md:grid grid-cols-12 gap-4 px-4 pb-2 text-sm font-bold text-gray-400 border-b-2 border-gray-700">
                                 <div className="col-span-1 text-center relative group">Scene <span className="text-brand-orange">(?)</span><Tooltip text="Số thứ tự phân cảnh. Tên file ảnh sẽ được đặt theo cột này." /></div>
                                 <div className="col-span-2">Script (Lang 1/Viet)</div>
@@ -3878,6 +4424,7 @@ const App: React.FC = () => {
                                         updateScene={updateScene}
                                         removeScene={removeScene}
                                         generateImage={() => performImageGeneration(scene.id)}
+                                        generateEndFrame={() => performImageGeneration(scene.id, undefined, true)}
                                         openImageViewer={() => handleOpenImageViewer(index)}
                                     />
                                 ))}
@@ -3902,7 +4449,7 @@ const App: React.FC = () => {
                 )
             }
 
-            <CoffeeButton onClick={() => setCoffeeModalOpen(true)} />
+
 
             <ApiKeyModal
                 isOpen={isApiKeyModalOpen}
@@ -3927,7 +4474,7 @@ const App: React.FC = () => {
                     localStorage.setItem('recaptchaToken', token);
                 }}
             />
-            <CoffeeModal isOpen={isCoffeeModalOpen} onClose={() => setCoffeeModalOpen(false)} apiKey={userApiKey} />
+
             <ScriptGeneratorModal
                 isOpen={isScriptModalOpen}
                 onClose={() => setScriptModalOpen(false)}
@@ -3938,6 +4485,12 @@ const App: React.FC = () => {
                 onPresetChange={(presetId) => updateStateAndRecord(s => ({ ...s, activeScriptPreset: presetId }))}
                 characters={state.characters}
                 products={state.products || []}
+                customInstruction={state.customScriptInstruction}
+                onCustomInstructionChange={(val) => updateStateAndRecord(s => ({ ...s, customScriptInstruction: val }))}
+                onAddPreset={(newPreset) => updateStateAndRecord(s => ({
+                    ...s,
+                    customScriptPresets: [...s.customScriptPresets, newPreset]
+                }))}
             />
             <CharacterDetailModal
                 isOpen={!!editingCharacterId}

@@ -35,6 +35,7 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
                         {preset.icon} {preset.name}
                     </option>
                 ))}
+                <option value="create_custom" className="text-brand-orange font-bold">+ Tùy chỉnh (Thêm mới)...</option>
             </select>
 
             {/* Active Preset Info */}

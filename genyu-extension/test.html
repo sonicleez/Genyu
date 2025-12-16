@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Extension Test Page</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #log {
+            background: #0a0a15;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+        }
+
+        .success {
+            color: #00ff88;
+        }
+
+        .error {
+            color: #ff4444;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🧪 Extension Test Page</h1>
+    <p>Open this page with Extension loaded and click buttons to test</p>
+
+    <button onclick="testFetch()">Test Fetch Interception</button>
+    <button onclick="testWindowMessage()">Test Window Message</button>
+    <button onclick="clearLog()">Clear Log</button>
+
+    <div id="log"></div>
+
+    <script>
+        function log(msg, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            document.getElementById('log').prepend(entry);
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // Listen for messages from extension
+        window.addEventListener('message', (event) => {
+            log(`Received message: ${JSON.stringify(event.data)}`, 'success');
+        });
+
+        // Test if fetch is intercepted
+        async function testFetch() {
+            log('Sending test fetch to googleapis.com...');
+
+            try {
+                const testBody = {
+                    clientContext: {
+                        recaptchaToken: 'TEST_TOKEN_12345',
+                        projectId: 'test-project'
+                    }
+                };
+
+                // This should trigger extension's intercept
+                await fetch('https://aisandbox-pa.googleapis.com/v1/flowMedia:batchGenerateImages', {
+                    method: 'POST',
+                    body: JSON.stringify(testBody)
+                }).catch(e => {
+                    log(`Fetch error (expected): ${e.message}`, 'info');
+                });
+
+                log('Check console for [Genyu MAIN] logs', 'success');
+            } catch (e) {
+                log(`Error: ${e.message}`, 'error');
+            }
+        }
+
+        // Test window.postMessage
+        function testWindowMessage() {
+            log('Posting test message...');
+            window.postMessage({
+                type: 'GENYU_TOKEN_CAPTURED',
+                body: {
+                    clientContext: {
+                        recaptchaToken: 'MANUAL_TEST_TOKEN'
+                    }
+                }
+            }, '*');
+            log('Message posted. Check extension logs.', 'success');
+        }
+
+        log('Test page loaded. Extension should inject here.', 'success');
+    </script>
+</body>
+
+</html>

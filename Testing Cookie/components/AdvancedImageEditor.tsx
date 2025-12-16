@@ -268,7 +268,7 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                     <div className="flex-1 bg-[#0a0a0a] flex flex-col relative">
 
                         {/* Floating Toolbar */}
-                        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-[#1a1a1a]/90 backdrop-blur border border-gray-700 rounded-full px-6 py-3 flex items-center space-x-6 shadow-2xl z-20">
+                        <div className="absolute top-4 right-4 bg-[#1a1a1a]/90 backdrop-blur border border-gray-700 rounded-full px-6 py-3 flex items-center space-x-6 shadow-2xl z-20">
                             <button
                                 onClick={() => setIsEraser(false)}
                                 className={`flex flex-col items-center space-y-1 ${!isEraser ? 'text-purple-400' : 'text-gray-500 hover:text-gray-300'}`}

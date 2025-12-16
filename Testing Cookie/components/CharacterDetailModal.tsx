@@ -10,7 +10,7 @@ interface CharacterDetailModalProps {
     updateCharacter: (id: string, updates: Partial<Character>) => void;
     setDefault: (id: string) => void;
     onMasterUpload: (id: string, image: string) => void;
-    onEditImage: (id: string, image: string, type: 'master' | 'face' | 'body' | 'prop', propIndex?: number) => void;
+    onEditImage: (id: string, image: string, type: 'master' | 'face' | 'body' | 'prop' | 'side' | 'back', propIndex?: number) => void;
     onOpenCharGen: (id: string) => void;
     onDelete: (id: string) => void;
 }
@@ -115,51 +115,49 @@ export const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
 
                 <div className="border-t border-gray-700 my-4"></div>
 
-                {/* Details Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <SingleImageSlot
-                        label="Gương mặt (Face ID)"
-                        image={character.faceImage}
-                        onUpload={(img) => updateCharacter(character.id, { faceImage: img })}
-                        onDelete={() => updateCharacter(character.id, { faceImage: null })}
-                        onEdit={character.faceImage ? () => onEditImage(character.id, character.faceImage!, 'face') : undefined}
-                        subLabel="Chỉ khuôn mặt"
-                    />
-                    <SingleImageSlot
-                        label="Dáng/Trang phục (Body)"
-                        image={character.bodyImage}
-                        onUpload={(img) => updateCharacter(character.id, { bodyImage: img })}
-                        onDelete={() => updateCharacter(character.id, { bodyImage: null })}
-                        onEdit={character.bodyImage ? () => onEditImage(character.id, character.bodyImage!, 'body') : undefined}
-                        aspect="portrait"
-                        subLabel="Toàn thân/Thiết kế"
-                    />
-                </div>
-
-                <div className="border-t border-gray-700 my-4"></div>
-
-                {/* Props */}
+                {/* Character Sheets (4 Views) */}
                 <div>
-                    <h3 className="text-sm font-bold text-gray-300 mb-2 uppercase tracking-wider">Đạo cụ & Chi tiết (Props)</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                        {character.props.map((prop, i) => (
-                            <div key={prop.id} className="flex flex-col space-y-2">
-                                <SingleImageSlot
-                                    label=""
-                                    image={prop.image}
-                                    onUpload={(img) => updateProp(i, 'image', img)}
-                                    onDelete={() => updateProp(i, 'image', null)}
-                                    onEdit={prop.image ? () => onEditImage(character.id, prop.image!, 'prop', i) : undefined}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Tên (VD: Kiếm)"
-                                    value={prop.name}
-                                    onChange={(e) => updateProp(i, 'name', e.target.value)}
-                                    className="w-full bg-brand-dark border border-gray-600 rounded px-2 py-1 text-xs text-center text-brand-cream focus:border-brand-orange outline-none"
-                                />
-                            </div>
-                        ))}
+                    <h3 className="text-sm font-bold text-gray-300 mb-2 uppercase tracking-wider">Character Sheets (4 Views)</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* 1. Face ID */}
+                        <SingleImageSlot
+                            label="Face ID"
+                            image={character.faceImage}
+                            onUpload={(img) => updateCharacter(character.id, { faceImage: img })}
+                            onDelete={() => updateCharacter(character.id, { faceImage: null })}
+                            onEdit={character.faceImage ? () => onEditImage(character.id, character.faceImage!, 'face') : undefined}
+                            subLabel="Gương mặt"
+                        />
+                        {/* 2. Full Body */}
+                        <SingleImageSlot
+                            label="Full Body"
+                            image={character.bodyImage}
+                            onUpload={(img) => updateCharacter(character.id, { bodyImage: img })}
+                            onDelete={() => updateCharacter(character.id, { bodyImage: null })}
+                            onEdit={character.bodyImage ? () => onEditImage(character.id, character.bodyImage!, 'body') : undefined}
+                            aspect="portrait"
+                            subLabel="Toàn thân"
+                        />
+                        {/* 3. Side Profile */}
+                        <SingleImageSlot
+                            label="Side Profile"
+                            image={character.sideImage}
+                            onUpload={(img) => updateCharacter(character.id, { sideImage: img })}
+                            onDelete={() => updateCharacter(character.id, { sideImage: null })}
+                            onEdit={character.sideImage ? () => onEditImage(character.id, character.sideImage!, 'side') : undefined}
+                            aspect="portrait"
+                            subLabel="Góc nghiêng"
+                        />
+                        {/* 4. Back View */}
+                        <SingleImageSlot
+                            label="Back View"
+                            image={character.backImage}
+                            onUpload={(img) => updateCharacter(character.id, { backImage: img })}
+                            onDelete={() => updateCharacter(character.id, { backImage: null })}
+                            onEdit={character.backImage ? () => onEditImage(character.id, character.backImage!, 'back') : undefined}
+                            aspect="portrait"
+                            subLabel="Sau lưng"
+                        />
                     </div>
                 </div>
             </div>

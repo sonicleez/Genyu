@@ -13,7 +13,9 @@ export interface Character {
   masterImage: string | null; // Ảnh gốc tổng thể (Reference)
   faceImage: string | null; // Slot 1: Face ID (Auto-generated or Manual)
   bodyImage: string | null; // Slot 2: Outfit/Turnaround (Auto-generated or Manual)
-  props: CharacterProp[]; // Slot 3-5: Props (Max 3)
+  sideImage: string | null; // Slot 3: Side Profile
+  backImage: string | null; // Slot 4: Back View
+  props: CharacterProp[]; // Deprecated UI section, kept for backward compat
 
   isDefault: boolean;
   isAnalyzing?: boolean;
@@ -46,7 +48,10 @@ export interface Scene {
   // Cinematography Overrides (User can customize per-scene)
   cameraAngleOverride?: string; // User override for camera angle
   lensOverride?: string; // User override for lens selection
+  customLensOverride?: string; // Custom lens text
+  customCameraAngle?: string; // Custom shot type text
   transitionType?: string; // Transition to next scene
+  customTransitionType?: string; // Custom transition text
 
   // Generation metadata
   promptName: string;
@@ -55,12 +60,17 @@ export interface Scene {
   productIds: string[]; // Referenced Products/Props in this scene
   generatedImage: string | null;
 
-  // Video generation
+  // Video generation - Veo 3.1
   mediaId?: string; // Google Labs Media ID for Video Gen
   generatedVideo?: string; // URL of generated video
   videoOperationName?: string; // Operation Name for Polling
   videoStatus?: string; // Status: 'active', 'succeeded', 'failed'
   veoPrompt: string; // Prompt tối ưu cho Google Veo
+
+  // Veo 3.1 Mode Selection (NEW)
+  veoMode?: 'image-to-video' | 'start-end-frame'; // Manual mode selection
+  imageRole?: 'single' | 'start-frame' | 'end-frame'; // Role of generatedImage
+  endFrameImage?: string | null; // End frame for Start/End Frame mode
 
   // UI state
   isGenerating: boolean;
@@ -69,7 +79,7 @@ export interface Scene {
 
 // Script Preset System
 export type ScriptCategory = 'film' | 'documentary' | 'commercial' | 'music-video' | 'custom';
-export type SceneStructure = 'traditional' | 'documentary' | 'commercial' | 'montage';
+export type SceneStructure = 'traditional' | 'documentary' | 'commercial' | 'montage' | 'custom';
 
 export interface OutputFormat {
   hasDialogue: boolean;
@@ -120,13 +130,16 @@ export type EditingMode = 'remove' | 'add' | 'style' | 'inpaint' | 'text-edit';
 
 export interface ProjectState {
   projectName: string;
+  detailedScript?: string;
+  customScriptInstruction?: string; // Custom meta tokens for script generation
   stylePrompt: string;
   imageModel: string; // Selected Image Gen Model
   aspectRatio: string; // "16:9" | "9:16" | "1:1" | "4:3" | "3:4"
   resolution: string;
   genyuToken?: string; // Optional: For Genyu.io API
   recaptchaToken?: string; // Optional: For Google Labs Recaptcha
-  scriptLanguage: 'vietnamese' | 'language1'; // Ngôn ngữ chính để tạo Veo prompt
+  scriptLanguage: string; // 'vietnamese' | 'language1' | 'custom'
+  customScriptLanguage?: string; // User input for custom language
 
   // Script Preset System
   activeScriptPreset: string; // ID of currently selected preset
@@ -134,8 +147,11 @@ export interface ProjectState {
 
   // Cinematography Settings (NEW)
   cameraModel?: string; // Global camera body selection
+  customCameraModel?: string; // Custom camera body input
   defaultLens?: string; // Default lens for all scenes
+  customDefaultLens?: string; // Custom lens input
   customMetaTokens?: string; // Custom creative tokens (if empty, AI generates)
+  customStyleInstruction?: string; // Custom full style prompt when Global Style is 'custom'
 
   characters: Character[];
   products: Product[]; // List of Products/Props

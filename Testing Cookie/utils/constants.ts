@@ -1,7 +1,7 @@
 import type { ProjectState } from '../types';
 
 // --- APP CONFIG ---
-export const APP_NAME = "Khung Ứng Dụng";
+export const APP_NAME = "Scene Director";
 export const PRIMARY_GRADIENT = "from-brand-orange to-brand-red";
 export const PRIMARY_GRADIENT_HOVER = "from-brand-orange/80 to-brand-red/80";
 
@@ -10,37 +10,37 @@ export const GLOBAL_STYLES = [
     {
         value: 'cinematic-realistic',
         label: 'Cinematic Realistic (Phim điện ảnh)',
-        prompt: 'Cinematic movie screengrab, shot on Arri Alexa, photorealistic, 8k, highly detailed texture, dramatic lighting, shallow depth of field, color graded, film grain.'
+        prompt: 'Cinematic movie screengrab, shot on Arri Alexa, photorealistic, 8k, highly detailed texture, dramatic lighting, shallow depth of field, color graded, film grain, masterpiece, award winning, trending on artstation, aesthetics, highly detailed, sharp focus.'
     },
     {
         value: '3d-pixar',
         label: '3D Animation (Pixar/Disney)',
-        prompt: '3D render style, Pixar animation style, octane render, unreal engine 5, cute, vibrant lighting, soft smooth textures, expressive, volumetric lighting, masterpiece.'
+        prompt: '3D render style, Pixar animation style, octane render, unreal engine 5, cute, vibrant lighting, soft smooth textures, expressive, volumetric lighting, masterpiece, redshift, disney pixar style, high fidelity, 8k.'
     },
     {
         value: 'anime-makoto',
         label: 'Anime (Makoto Shinkai Style)',
-        prompt: 'Anime style, Makoto Shinkai art style, high quality 2D animation, beautiful sky, detailed background, vibrant colors, emotional atmosphere, cell shading.'
+        prompt: 'Anime style, Makoto Shinkai art style, high quality 2D animation, beautiful sky, detailed background, vibrant colors, emotional atmosphere, cell shading, masterpiece, best quality, official art, key visual, 4k, detailed illustration.'
     },
     {
         value: 'vintage-film',
         label: 'Vintage 1980s Film (Retro)',
-        prompt: '1980s vintage movie look, film grain, retro aesthetic, warm tones, soft focus, kodak portra 400, nostalgia atmosphere.'
+        prompt: '1980s vintage movie look, film grain, retro aesthetic, warm tones, soft focus, kodak portra 400, nostalgia atmosphere, analog photography, grainy, nostalgic, classic movie.'
     },
     {
         value: 'cyberpunk',
         label: 'Cyberpunk / Sci-Fi',
-        prompt: 'Cyberpunk aesthetic, neon lighting, dark atmosphere, futuristic, high contrast, wet streets, technological details, blade runner style.'
+        prompt: 'Cyberpunk aesthetic, neon lighting, dark atmosphere, futuristic, high contrast, wet streets, technological details, blade runner style, futuristic, glowing neon, high tech, intricate details, masterpiece.'
     },
     {
         value: 'watercolor',
         label: 'Watercolor / Artistic',
-        prompt: 'Watercolor painting style, soft edges, artistic, painterly, dreamy atmosphere, paper texture, pastel colors.'
+        prompt: 'Watercolor painting style, soft edges, artistic, painterly, dreamy atmosphere, paper texture, pastel colors, traditional medium, wet on wet, masterpiece, artistic, detailed.'
     },
     {
         value: 'dark-fantasy',
         label: 'Dark Fantasy (Game Style)',
-        prompt: 'Dark fantasy art, elden ring style, gritty, atmospheric, ominous lighting, detailed armor and textures, epic scale, oil painting aesthetic.'
+        prompt: 'Dark fantasy art, elden ring style, gritty, atmospheric, ominous lighting, detailed armor and textures, epic scale, oil painting aesthetic, masterpiece, oil painting, intricate, ominous, highly detailed, trending on artstation.'
     }
 ];
 
@@ -88,6 +88,8 @@ export const createInitialState = (): ProjectState => ({
         masterImage: null,
         faceImage: null,
         bodyImage: null,
+        sideImage: null,
+        backImage: null,
         props: [
             { id: generateId(), name: '', image: null },
             { id: generateId(), name: '', image: null },
