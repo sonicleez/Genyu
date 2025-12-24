@@ -574,6 +574,17 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                     setDraggedSceneIndex={setDraggedSceneIndex}
                                     dragOverIndex={dragOverIndex}
                                     setDragOverIndex={setDragOverIndex}
+                                    onClearAllImages={() => {
+                                        updateStateAndRecord(s => ({
+                                            ...s,
+                                            scenes: s.scenes.map(scene => ({
+                                                ...scene,
+                                                generatedImage: null,
+                                                endFrameImage: null,
+                                                mediaId: null
+                                            }))
+                                        }));
+                                    }}
                                 />
                                 <div className="flex justify-end mt-8 gap-4">
                                     <button

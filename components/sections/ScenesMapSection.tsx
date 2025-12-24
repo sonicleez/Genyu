@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table, LayoutGrid, Trash2, Plus } from 'lucide-react';
+import { Table, LayoutGrid, Trash2, Plus, ImageMinus } from 'lucide-react';
 import { SceneRow } from '../scenes/SceneRow';
 import { StoryBoardCard } from '../scenes/StoryBoardCard';
 import { Tooltip } from '../common/Tooltip';
@@ -42,6 +42,7 @@ interface ScenesMapSectionProps {
     setDraggedSceneIndex: (idx: number | null) => void;
     dragOverIndex: number | null;
     setDragOverIndex: (idx: number | null) => void;
+    onClearAllImages: () => void;
 }
 
 export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
@@ -79,7 +80,8 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
     draggedSceneIndex,
     setDraggedSceneIndex,
     dragOverIndex,
-    setDragOverIndex
+    setDragOverIndex,
+    onClearAllImages
 }) => {
     return (
         <div className="my-16">
@@ -159,6 +161,19 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                             {isStopping ? '...' : 'STOP'}
                         </button>
                     )}
+
+                    <button
+                        onClick={() => {
+                            if (confirm('⚠️ Xóa TẤT CẢ ảnh đã tạo trong scenes? Hành động này không thể hoàn tác.')) {
+                                onClearAllImages();
+                            }
+                        }}
+                        className="h-11 px-4 flex items-center gap-2 font-black text-[11px] text-red-400 rounded-xl bg-red-900/20 hover:bg-red-900/40 border border-red-900/50 shadow-lg transition-all uppercase tracking-widest"
+                        title="Xóa tất cả ảnh đã tạo trong scenes"
+                    >
+                        <ImageMinus size={16} />
+                        Xóa hết ảnh
+                    </button>
                 </div>
             </div>
 
