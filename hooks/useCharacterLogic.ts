@@ -234,26 +234,38 @@ export function useCharacterLogic(
                 description: charDescription
             });
 
-            // Step 2: Generate Face ID and Body using the DETECTED style from the reference image
+            // Step 2: Generate Face ID and Body using ONLY the detected style from the reference image
+            // IGNORE any global style presets - use ONLY the style from the uploaded image
             const styleInstruction = `
-**MANDATORY STYLE CONSISTENCY:**
-- ART STYLE: You MUST replicate the exact artistic style of the reference image: "${detectedStyle}".
-- DO NOT change the art style. If the reference is anime, generate anime. If photorealistic, generate photorealistic.
-- BACKGROUND: Pure Solid White Studio Background.
-- CHARACTER: The character's face, hair, and clothing MUST be exactly as seen in the reference.
-- LIGHTING: Professional studio lighting with rim lights.
-- QUALITY: High resolution, clean sharp focus.
+**CRITICAL STYLE ENFORCEMENT - DO NOT DEVIATE:**
+You are generating images that MUST match the EXACT artistic style of the reference image provided.
+
+DETECTED STYLE FROM REFERENCE: "${detectedStyle}"
+
+ABSOLUTE RULES:
+1. COPY the exact art style from the reference image. If it's anime, generate anime. If photorealistic, generate photorealistic.
+2. MATCH the same color palette, shading technique, and line work as the reference.
+3. IGNORE any other style instructions. The reference image is the ONLY style guide.
+4. DO NOT apply any "cinematic", "8k", or "photorealistic" styles unless the reference is actually photorealistic.
+5. KEEP the character's exact appearance: face, hair color/style, clothing, accessories.
+
+TECHNICAL REQUIREMENTS:
+- BACKGROUND: Pure solid white (#FFFFFF) studio background only.
+- LIGHTING: Clean studio lighting that matches the reference's lighting style.
+- QUALITY: Sharp, clean, no artifacts.
             `.trim();
 
-            const facePrompt = `${styleInstruction}\n\n(STRICT CAMERA: EXTREME CLOSE-UP - FACE ID ON WHITE BACKGROUND) Generate a highly detailed Face ID close-up of this character: ${charDescription}. Focus on capturing the exact facial features and expression from the reference. Match the art style EXACTLY.`;
-            const bodyPrompt = `${styleInstruction}\n\n(STRICT CAMERA: FULL BODY HEAD-TO-TOE WIDE SHOT ON WHITE BACKGROUND) Generate a Full Body character design sheet (Front View, T-Pose or A-Pose). MUST CAPTURE HEAD-TO-TOE INCLUDING VISIBLE FEET. Description: ${charDescription}. Match the art style and clothing EXACTLY from the reference.`;
+            const facePrompt = `${styleInstruction}\n\n[TASK: FACE ID]\nGenerate an EXTREME CLOSE-UP portrait of this character's face on a pure white background.\nCharacter: ${charDescription}\nSTYLE: Match the reference exactly - "${detectedStyle}"`;
 
-            const model = state.imageModel || 'gemini-3-pro-image-preview';
+            const bodyPrompt = `${styleInstruction}\n\n[TASK: FULL BODY]\nGenerate a FULL BODY view (head to toe, feet visible) of this character on a pure white background.\nPose: T-Pose or A-Pose, front view.\nCharacter: ${charDescription}\nSTYLE: Match the reference exactly - "${detectedStyle}"`;
+
+            const model = 'gemini-3-pro-image-preview'; // Use best model for style matching
 
             let [faceUrl, bodyUrl] = await Promise.all([
                 callGeminiAPI(apiKey, facePrompt, "1:1", model, image),
                 callGeminiAPI(apiKey, bodyPrompt, "9:16", model, image),
             ]);
+
 
             if (userId) {
                 if (faceUrl?.startsWith('data:')) {
