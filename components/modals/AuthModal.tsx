@@ -9,6 +9,7 @@ interface AuthModalProps {
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [fullName, setFullName] = useState('');
     const [isSignUp, setIsSignUp] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -21,14 +22,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen }) => {
         setLoading(true);
         setError(null);
 
-        const { error } = isSignUp
-            ? await supabase.auth.signUp({ email, password })
-            : await supabase.auth.signInWithPassword({ email, password });
-
-        if (error) {
-            setError(error.message);
-        } else if (isSignUp) {
-            setSuccessMsg("Đăng ký thành công! Vui lòng kiểm tra email để xác nhận (nếu có).");
+        if (isSignUp) {
+            // Sign up with name in metadata
+            const { error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: fullName.trim() || email.split('@')[0]
+                    }
+                }
+            });
+            if (error) {
+                setError(error.message);
+            } else {
+                setSuccessMsg("Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.");
+            }
+        } else {
+            // Login
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                setError(error.message);
+            }
         }
         setLoading(false);
     };
@@ -44,6 +59,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen }) => {
                 </p>
 
                 <form onSubmit={handleAuth} className="space-y-4">
+                    {/* Full Name - Only for Sign Up */}
+                    {isSignUp && (
+                        <div>
+                            <label className="block text-xs font-bold text-brand-orange mb-1 uppercase tracking-widest">Họ và Tên</label>
+                            <input
+                                type="text"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-brand-cream focus:outline-none focus:border-brand-orange/50 transition-all"
+                                placeholder="Nguyễn Văn A"
+                            />
+                        </div>
+                    )}
                     <div>
                         <label className="block text-xs font-bold text-brand-orange mb-1 uppercase tracking-widest">Email Address</label>
                         <input
@@ -81,7 +109,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen }) => {
 
                 <div className="mt-6 text-center">
                     <button
-                        onClick={() => setIsSignUp(!isSignUp)}
+                        onClick={() => { setIsSignUp(!isSignUp); setError(null); setSuccessMsg(null); }}
                         className="text-brand-cream/40 hover:text-brand-orange text-xs transition-colors"
                     >
                         {isSignUp ? 'Already have an account? Login' : "Don't have an account? Sign up"}
