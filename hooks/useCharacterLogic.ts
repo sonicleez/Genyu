@@ -152,7 +152,7 @@ export function useCharacterLogic(
     }, [userApiKey, updateCharacter, setApiKeyModalOpen, userId]);
 
     // Combined function: Analyze + Generate Face ID & Body in one step
-    const analyzeAndGenerateSheets = useCallback(async (id: string, image: string) => {
+    const analyzeAndGenerateSheets = useCallback(async (id: string, image: string, options?: { skipMetadata?: boolean }) => {
         const rawApiKey = userApiKey || (process.env as any).API_KEY;
         const apiKey = typeof rawApiKey === 'string' ? rawApiKey.trim() : rawApiKey;
 
@@ -257,15 +257,21 @@ Return JSON:
             console.log('[Character Analysis] Detected style:', detectedStyle);
 
 
-            // Update character with analysis results first
+            // Update character with analysis results
+            // If skipMetadata is true, we ONLY update the masterImage (if changed)
+            // and we rely on existing name/description for the subsequent prompt generation
+            const currentChar = state.characters.find(c => c.id === id);
+            const finalName = options?.skipMetadata ? (currentChar?.name || charName) : charName;
+            const finalDescription = options?.skipMetadata ? (currentChar?.description || charDescription) : charDescription;
+
             updateCharacter(id, {
                 masterImage: finalMasterUrl,
-                name: charName,
-                description: charDescription
+                name: finalName,
+                description: finalDescription
             });
 
             // Step 2: Generate Face ID and Body using ONLY the detected style from the reference image
-            // IGNORE any global style presets - use ONLY the style from the uploaded image
+            // Note: We use finalDescription here which might be the user's custom one
             const styleInstruction = `
 **CRITICAL STYLE ENFORCEMENT - DO NOT DEVIATE:**
 You are generating images that MUST match the EXACT artistic style of the reference image provided.
@@ -285,9 +291,9 @@ TECHNICAL REQUIREMENTS:
 - QUALITY: Sharp, clean, no artifacts.
             `.trim();
 
-            const facePrompt = `${styleInstruction}\n\n[TASK: FACE ID]\nGenerate an EXTREME CLOSE-UP portrait of this character's face on a pure white background.\nCharacter: ${charDescription}\nSTYLE: Match the reference exactly - "${detectedStyle}"`;
+            const facePrompt = `${styleInstruction}\n\n[TASK: FACE ID]\nGenerate an EXTREME CLOSE-UP portrait of this character's face on a pure white background.\nCharacter: ${finalDescription}\nSTYLE: Match the reference exactly - "${detectedStyle}"`;
 
-            const bodyPrompt = `${styleInstruction}\n\n[TASK: FULL BODY]\nGenerate a FULL BODY view (head to toe, feet visible) of this character on a pure white background.\nPose: T-Pose or A-Pose, front view.\nCharacter: ${charDescription}\nSTYLE: Match the reference exactly - "${detectedStyle}"`;
+            const bodyPrompt = `${styleInstruction}\n\n[TASK: FULL BODY]\nGenerate a FULL BODY view (head to toe, feet visible) of this character on a pure white background.\nPose: T-Pose or A-Pose, front view.\nCharacter: ${finalDescription}\nSTYLE: Match the reference exactly - "${detectedStyle}"`;
 
             const model = 'gemini-3-pro-image-preview'; // Use best model for style matching
 
