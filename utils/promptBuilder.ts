@@ -60,7 +60,7 @@ export function buildScriptPrompt(
 ],
 - "scenes": [
     {
-        "visual_context": "BẮT ĐẦU bằng mốc thời gian [00:00-00:0X]. Mô tả theo cấu trúc chuẩn VEO 3.1: [Cinematography] + [Subject] + [Action] + [Context] + [Style & Ambiance]. Cuối cùng thêm SFX (Sound Effects) và Emotion (Cảm xúc).",
+        "visual_context": "BẮT ĐẦU bằng SHOT TYPE (VD: CLOSE UP (CU), MEDIUM SHOT (MS), WIDE SHOT (WS), EXTREME CLOSE UP (ECU), BIRD VIEW, LOW ANGLE, OTS). Tiếp theo là mô tả visual chi tiết bao gồm: subject, action, environment, lighting, atmosphere. Tối ưu cho AI image generation.",
         "scene_number": "1",
         "group_id": "group_id",
         "prompt_name": "Tiêu đề cảnh",
@@ -83,15 +83,18 @@ export function buildScriptPrompt(
     outputFormatInstructions += `    }
 ]
 
-**IMPORTANT RULES (VEO 3.1 STANDARDS):**
-1. **Timestamped Scenes**: Mọi mô tả TRONG visual_context PHẢI bắt đầu bằng mốc thời gian (VD: [00:00-00:04]).
-2. **The Veo Formula**: Cấu trúc visual_context PHẢI tuân thủ: [Cinematography: Camera movement/composition] + [Subject: Visual details of main character] + [Action: What they are doing] + [Context: Environment details] + [Style & Ambiance: Lighting, mood, film grain].
-3. **Sound & Emotion**: BẮT BUỘC bao gồm SFX (VD: "SFX: tiếng mưa rơi, tiếng lá xào xạc") và Emotion (VD: "Emotion: Hopeful and determined") ở cuối visual_context.
-4. **Director's Story Audit**: Trước khi viết mỗi cảnh, hãy tự hỏi: "Chi tiết này có giúp kể câu chuyện tốt hơn không?". TUYỆT ĐỐI LOẠI BỎ các yếu tố trang trí không liên quan đến cốt truyện hoặc tính cách nhân vật.
-5. **Cinetic Shot Progression**: Đảm bảo sự chuyển động góc máy logic (WIDE SHOT -> MEDIUM -> CLOSE UP) để tạo nhịp điệu điện ảnh.
-6. **No Ghost People**: NẾU KHÔNG CÓ character_ids, visual_context TUYỆT ĐỐI KHÔNG mô tả bất kỳ người nào.
-7. **Integrity**: Chỉ sử dụng các character_id/product_id được cung cấp trong danh sách.
+**IMPORTANT RULES (IMAGE GENERATION OPTIMIZED):**
+1. **Shot Type First**: Mọi visual_context PHẢI bắt đầu bằng SHOT TYPE rõ ràng (CLOSE UP, MEDIUM SHOT, WIDE SHOT, etc.).
+2. **Visual Description Formula**: Cấu trúc: SHOT TYPE + Subject details + Action/Pose + Environment + Lighting + Atmosphere/Mood.
+3. **Material & Texture**: Mô tả chi tiết chất liệu, kết cấu (VD: "lông thú thô ráp", "vải lanh nếp nhăn", "da sần sùi").
+4. **Lighting Focus**: Luôn mô tả ánh sáng cụ thể (VD: "Rim light tạo đường viền trắng bạc", "ánh sáng bình minh vàng ấm").
+5. **No Timestamps**: KHÔNG sử dụng mốc thời gian [00:00-00:05]. Format này tối ưu cho ẢNH, không phải video.
+6. **No SFX/Emotion**: KHÔNG thêm SFX hoặc Emotion vào visual_context. Chỉ mô tả những gì NHÌN THẤY được.
+7. **Cinematic Shot Progression**: Đảm bảo sự chuyển động góc máy logic (WIDE SHOT -> MEDIUM -> CLOSE UP).
+8. **No Ghost People**: NẾU KHÔNG CÓ character_ids, visual_context TUYỆT ĐỐI KHÔNG mô tả bất kỳ người nào.
+9. **Integrity**: Chỉ sử dụng các character_id/product_id được cung cấp trong danh sách.
 `;
+
 
     // Add custom instructions if present
     const customInstructionBlock = customInstruction?.trim()
