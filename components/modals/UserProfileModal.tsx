@@ -65,12 +65,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         user_id: session.user.id,
                         provider: 'gemini',
                         encrypted_key: trimmedKey,
-                        is_active: true,
-                        updated_at: new Date().toISOString()
+                        is_active: true
                     }, { onConflict: 'user_id,provider' });
 
-                if (supabaseError) console.error('Supabase save error:', supabaseError);
+                if (supabaseError) {
+                    console.error('Supabase save error:', supabaseError);
+                    throw new Error(`Không thể lưu key: ${supabaseError.message}`);
+                } else {
+                    console.log('[API Key] ✅ Saved to Supabase successfully');
+                }
             }
+
 
             setApiKey(trimmedKey);
             setCheckStatus('success');
