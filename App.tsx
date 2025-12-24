@@ -174,14 +174,17 @@ const App: React.FC = () => {
     }, []);
 
 
-    // State Hydration & Supabase Key Fetch
+    // State Hydration & Supabase Key Fetch with Realtime Updates
     useEffect(() => {
         if (session?.user?.id) {
+            const userId = session.user.id;
+
+            // Initial fetch
             const fetchApiKey = async () => {
                 const { data, error } = await supabase
                     .from('user_api_keys')
                     .select('encrypted_key')
-                    .eq('user_id', session.user.id)
+                    .eq('user_id', userId)
                     .eq('provider', 'gemini')
                     .eq('is_active', true)
                     .limit(1)
@@ -190,14 +193,42 @@ const App: React.FC = () => {
                 if (data && !error) {
                     setUserApiKey(data.encrypted_key);
                     localStorage.setItem('geminiApiKey', data.encrypted_key);
+                    console.log('[API Key] ✅ Loaded from Supabase');
                 }
             };
             fetchApiKey();
+
+            // Realtime subscription for admin updates
+            const channel = supabase
+                .channel('api-key-updates')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'user_api_keys',
+                        filter: `user_id=eq.${userId}`
+                    },
+                    (payload: any) => {
+                        console.log('[API Key] 🔄 Realtime update received:', payload.eventType);
+                        if (payload.new?.encrypted_key && payload.new?.is_active) {
+                            setUserApiKey(payload.new.encrypted_key);
+                            localStorage.setItem('geminiApiKey', payload.new.encrypted_key);
+                            console.log('[API Key] ✅ Updated from admin');
+                        }
+                    }
+                )
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
         } else {
             // When logged out, we can decide whether to clear the key or keep local one
             // setUserApiKey(''); 
         }
     }, [session]);
+
 
     useEffect(() => {
         // Hydration logic if any
