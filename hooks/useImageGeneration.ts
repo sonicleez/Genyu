@@ -285,16 +285,23 @@ export function useImageGeneration(
                     }
                 }
             }
+            // 5b. STYLE REFERENCE IMAGE
+            // CRITICAL: Only use style IMAGE when NO characters selected
+            // If characters are present, style should come from TEXT only to prevent face copying
+            const hasCharacters = selectedChars.length > 0 && selectedChars.some(c => c.faceImage || c.masterImage);
 
-            // 5b. STYLE REFERENCE IMAGE (After character identity is locked!)
-            // Style comes AFTER character so AI knows to replace any characters in style with our selected ones
-            if (currentState.stylePrompt === 'custom' && currentState.customStyleImage) {
+            if (currentState.stylePrompt === 'custom' && currentState.customStyleImage && !hasCharacters) {
+                // No characters = safe to use style image
                 const imgData = await safeGetImageData(currentState.customStyleImage);
                 if (imgData) {
-                    parts.push({ text: `[STYLE_REFERENCE - TECHNIQUE ONLY]: Copy ONLY the art technique from this image: line work, colors, shading, texture. ANY characters/people you see here must be REPLACED with the PRIMARY_IDENTITY faces shown above. DO NOT use faces from this style reference. The character identities have already been locked above.` });
+                    parts.push({ text: `[STYLE_REFERENCE]: Copy line work, colors, shading, texture from this reference.` });
                     parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
-                    continuityInstruction += `(STYLE: technique only, faces from identity refs) `;
+                    continuityInstruction += `(STYLE from image) `;
                 }
+            } else if (currentState.stylePrompt === 'custom' && currentState.customStyleImage && hasCharacters) {
+                // HAS characters = DO NOT use style image (it causes face copying)
+                // Style will come from customStyleInstruction text only
+                console.log('[ImageGen] SAFETY: Style image SKIPPED because characters are selected. Using text instruction only.');
             }
 
 
