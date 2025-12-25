@@ -14,6 +14,7 @@ const INSERT_ANGLE_OPTIONS = [
     { value: 'high_angle', label: 'High Angle (Bird Eye)' },
     { value: 'over_shoulder', label: 'Over The Shoulder (OTS)' },
     { value: 'dutch_angle', label: 'Dutch Angle (Tilted)' },
+    { value: 'custom', label: '📝 Tùy chỉnh (Nhập prompt)...' },
 ];
 
 export interface SceneRowProps {
@@ -33,7 +34,7 @@ export interface SceneRowProps {
     onDrop: (index: number) => void;
     generateVeoPrompt: (sceneId: string) => void;
     onCopyPreviousStyle?: () => void;
-    onInsertAngles?: (sceneId: string, angles: string[], sourceImage: string) => void;
+    onInsertAngles?: (sceneId: string, selections: { value: string; customPrompt?: string }[], sourceImage: string) => void;
 }
 
 export const SceneRow: React.FC<SceneRowProps> = ({
@@ -47,6 +48,7 @@ export const SceneRow: React.FC<SceneRowProps> = ({
     const endFrameInputRef = useRef<HTMLInputElement>(null);
     const [showAnglesDropdown, setShowAnglesDropdown] = useState(false);
     const [selectedAngles, setSelectedAngles] = useState<string[]>([]);
+    const [customAnglePrompt, setCustomAnglePrompt] = useState('');
 
 
     const handleEndFrameUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -507,9 +509,23 @@ export const SceneRow: React.FC<SceneRowProps> = ({
                                             </label>
                                         ))}
                                     </div>
+
+                                    {/* Custom Prompt Input */}
+                                    {selectedAngles.includes('custom') && (
+                                        <div className="mt-2 pt-2 border-t border-purple-500/30">
+                                            <label className="block text-[8px] font-bold text-purple-400 mb-1 uppercase">Mô tả góc máy tùy chỉnh</label>
+                                            <textarea
+                                                value={customAnglePrompt}
+                                                onChange={(e) => setCustomAnglePrompt(e.target.value)}
+                                                placeholder="VD: Góc nhìn từ chân nhân vật lên, hoặc nhìn qua khe cửa..."
+                                                className="w-full h-16 bg-gray-950 border border-purple-500/30 rounded p-1.5 text-[10px] text-purple-200 outline-none focus:border-purple-500 resize-none shadow-inner"
+                                            />
+                                        </div>
+                                    )}
+
                                     <div className="flex gap-1 mt-2 pt-2 border-t border-gray-700">
                                         <button
-                                            onClick={() => { setShowAnglesDropdown(false); setSelectedAngles([]); }}
+                                            onClick={() => { setShowAnglesDropdown(false); setSelectedAngles([]); setCustomAnglePrompt(''); }}
                                             className="flex-1 text-[9px] text-gray-400 hover:text-white py-1 rounded bg-gray-800"
                                         >
                                             Hủy
@@ -517,12 +533,17 @@ export const SceneRow: React.FC<SceneRowProps> = ({
                                         <button
                                             onClick={() => {
                                                 if (selectedAngles.length > 0 && scene.generatedImage) {
-                                                    onInsertAngles(scene.id, selectedAngles, scene.generatedImage);
+                                                    const selections = selectedAngles.map(val => ({
+                                                        value: val,
+                                                        customPrompt: val === 'custom' ? customAnglePrompt : undefined
+                                                    }));
+                                                    onInsertAngles(scene.id, selections, scene.generatedImage);
                                                     setShowAnglesDropdown(false);
                                                     setSelectedAngles([]);
+                                                    setCustomAnglePrompt('');
                                                 }
                                             }}
-                                            disabled={selectedAngles.length === 0}
+                                            disabled={selectedAngles.length === 0 || (selectedAngles.includes('custom') && !customAnglePrompt.trim())}
                                             className="flex-1 text-[9px] text-white py-1 rounded bg-purple-600 hover:bg-purple-500 disabled:opacity-50 font-bold"
                                         >
                                             Tạo {selectedAngles.length > 0 ? `(${selectedAngles.length})` : ''}

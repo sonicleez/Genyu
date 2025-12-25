@@ -43,7 +43,7 @@ interface ScenesMapSectionProps {
     dragOverIndex: number | null;
     setDragOverIndex: (idx: number | null) => void;
     onClearAllImages: () => void;
-    onInsertAngles?: (sceneId: string, angles: string[], sourceImage: string) => void;
+    onInsertAngles?: (sceneId: string, selections: { value: string; customPrompt?: string }[], sourceImage: string) => void;
 }
 
 export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({

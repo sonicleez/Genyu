@@ -168,7 +168,7 @@ const App: React.FC = () => {
     ]);
 
     // Handle Insert Angles: Create new scenes with different camera angles from source image
-    const handleInsertAngles = useCallback(async (sourceSceneId: string, angles: string[], sourceImage: string) => {
+    const handleInsertAngles = useCallback(async (sourceSceneId: string, selections: { value: string; customPrompt?: string }[], sourceImage: string) => {
         const sourceScene = state.scenes.find(s => s.id === sourceSceneId);
         if (!sourceScene) return;
 
@@ -212,8 +212,17 @@ const App: React.FC = () => {
         };
 
         // Create new scenes for each angle
-        const newScenes: Scene[] = angles.map((angle, i) => {
-            const angleConfig = anglePromptMap[angle] || { name: angle, instruction: `Camera angle: ${angle}` };
+        const newScenes: Scene[] = selections.map((selection, i) => {
+            const angle = selection.value;
+            const customPrompt = selection.customPrompt;
+
+            const angleConfig = anglePromptMap[angle] || {
+                name: angle === 'custom' ? 'Custom Angle' : angle,
+                instruction: angle === 'custom' && customPrompt
+                    ? `CUSTOM CAMERA ANGLE: ${customPrompt}`
+                    : `Camera angle: ${angle}`
+            };
+
             return {
                 id: generateId(),
                 sceneNumber: `${sourceIndex + 2 + i}`, // Will be renumbered
@@ -225,14 +234,13 @@ const App: React.FC = () => {
                 visualDescription: sourceScene.visualDescription,
                 characterIds: [...sourceScene.characterIds],
                 productIds: [...(sourceScene.productIds || [])],
-                cameraAngleOverride: angle === 'custom' ? '' : angle,
+                cameraAngleOverride: angle === 'custom' ? customPrompt || '' : angle,
                 generatedImage: null,
                 veoPrompt: '',
                 isGenerating: true, // Start as generating
                 error: null,
             };
         });
-
 
         // Insert new scenes after source scene and renumber
         updateStateAndRecord(s => {
