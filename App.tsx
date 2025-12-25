@@ -174,36 +174,65 @@ const App: React.FC = () => {
 
         const sourceIndex = state.scenes.findIndex(s => s.id === sourceSceneId);
 
-        // Map angle values to readable names for prompt
-        const angleNameMap: Record<string, string> = {
-            'wide_shot': 'Wide Shot (WS)',
-            'medium_shot': 'Medium Shot (MS)',
-            'close_up': 'Close Up (CU)',
-            'extreme_close_up': 'Extreme Close Up (ECU)',
-            'low_angle': 'Low Angle (Worm Eye View)',
-            'high_angle': 'High Angle (Bird Eye View)',
-            'over_shoulder': 'Over The Shoulder Shot (OTS)',
-            'dutch_angle': 'Dutch Angle (Tilted Frame)',
+        // Detailed prompt instructions for each camera angle type
+        // These describe how to compose the shot based on the source scene
+        const anglePromptMap: Record<string, { name: string; instruction: string }> = {
+            'wide_shot': {
+                name: 'Wide Shot (WS)',
+                instruction: 'WIDE SHOT: Pull camera back significantly. Expand the visible environment - show more of the surroundings (walls, sky, ground, architecture). Character appears smaller in frame. PRESERVE the same location/setting from source. If background was cropped, EXTEND it logically with consistent style.'
+            },
+            'medium_shot': {
+                name: 'Medium Shot (MS)',
+                instruction: 'MEDIUM SHOT: Frame character from waist up. Show balanced mix of character and environment. Background visible but character is main focus. Maintain same lighting and color palette.'
+            },
+            'close_up': {
+                name: 'Close Up (CU)',
+                instruction: 'CLOSE UP: Frame character from shoulders up, focusing on face and expression. Background becomes blurred/bokeh but should hint at the same environment. Capture emotional detail.'
+            },
+            'extreme_close_up': {
+                name: 'Extreme Close Up (ECU)',
+                instruction: 'EXTREME CLOSE UP: Fill frame with specific detail - eyes, hands, or object of focus. Background fully blurred. Use dramatic shallow depth of field. Capture texture and fine details.'
+            },
+            'low_angle': {
+                name: 'Low Angle (Worm Eye View)',
+                instruction: 'LOW ANGLE: Camera positioned below subject looking up. Character appears powerful/dominant. Show ceiling, sky, or overhead elements that would be visible from this angle. CREATE new overhead background elements consistent with the setting (sky, ceiling, branches, etc.).'
+            },
+            'high_angle': {
+                name: 'High Angle (Bird Eye View)',
+                instruction: 'HIGH ANGLE: Camera positioned above subject looking down. Show ground/floor details. EXTEND the floor/ground area visible in source. Add logical ground details consistent with setting (patterns, shadows, objects on ground).'
+            },
+            'over_shoulder': {
+                name: 'Over The Shoulder (OTS)',
+                instruction: 'OVER THE SHOULDER: Frame scene looking past character shoulder/head (visible in foreground, slightly blurred). Main subject/environment visible in background. CREATE character shoulder/back/hair in foreground that matches their appearance. Background should show the SAME environment from source but from this new perspective.'
+            },
+            'dutch_angle': {
+                name: 'Dutch Angle (Tilted)',
+                instruction: 'DUTCH ANGLE: Tilt camera 15-30 degrees for dramatic/disorienting effect. Keep same framing distance but rotate the view. Maintain all environment elements but at an angle. Creates tension and unease.'
+            },
         };
 
         // Create new scenes for each angle
-        const newScenes: Scene[] = angles.map((angle, i) => ({
-            id: generateId(),
-            sceneNumber: `${sourceIndex + 2 + i}`, // Will be renumbered
-            groupId: sourceScene.groupId,
-            language1: sourceScene.language1,
-            vietnamese: sourceScene.vietnamese,
-            promptName: `${sourceScene.promptName || 'Scene'} - ${angleNameMap[angle] || angle}`,
-            contextDescription: `${sourceScene.contextDescription}\n\n[CAMERA ANGLE: ${angleNameMap[angle] || angle}]`,
-            visualDescription: sourceScene.visualDescription,
-            characterIds: [...sourceScene.characterIds],
-            productIds: [...(sourceScene.productIds || [])],
-            cameraAngleOverride: angle === 'custom' ? '' : angle,
-            generatedImage: null,
-            veoPrompt: '',
-            isGenerating: true, // Start as generating
-            error: null,
-        }));
+        const newScenes: Scene[] = angles.map((angle, i) => {
+            const angleConfig = anglePromptMap[angle] || { name: angle, instruction: `Camera angle: ${angle}` };
+            return {
+                id: generateId(),
+                sceneNumber: `${sourceIndex + 2 + i}`, // Will be renumbered
+                groupId: sourceScene.groupId,
+                language1: sourceScene.language1,
+                vietnamese: sourceScene.vietnamese,
+                promptName: `${sourceScene.promptName || 'Scene'} - ${angleConfig.name}`,
+                contextDescription: `[ANGLE VARIATION FROM SOURCE SCENE]\n\n${angleConfig.instruction}\n\nORIGINAL SCENE CONTEXT:\n${sourceScene.contextDescription}\n\n[IMPORTANT: Use the source image as reference for environment, character appearance, and styling. This is the SAME moment from a DIFFERENT camera position.]`,
+                visualDescription: sourceScene.visualDescription,
+                characterIds: [...sourceScene.characterIds],
+                productIds: [...(sourceScene.productIds || [])],
+                cameraAngleOverride: angle === 'custom' ? '' : angle,
+                generatedImage: null,
+                veoPrompt: '',
+                isGenerating: true, // Start as generating
+                error: null,
+            };
+        });
+
 
         // Insert new scenes after source scene and renumber
         updateStateAndRecord(s => {
