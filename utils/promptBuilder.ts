@@ -34,10 +34,12 @@ export function buildScriptPrompt(
     const characterInstructions = availableCharacters.length > 0
         ? `\n**AVAILABLE CHARACTERS (JSON):**\n${characterListString}\n\n**CHARACTER USAGE RULES:**
 1. **AUTO ASSIGN REQUIRED**: Tự động gán 'character_ids' cho các cảnh có nhân vật xuất hiện hoặc được nhắc đến. PHẢI gán ít nhất 1 character nếu cảnh có người.
-2. **Visual Consistency**: Trong "visual_context", MÔ TẢ CHI TIẾT đặc điểm nhận dạng của nhân vật (kiểu tóc, màu tóc, trang phục) ĐÚNG với description được cung cấp.
-3. **No Ghost People**: NẾU cảnh KHÔNG có character_ids, visual_context TUYỆT ĐỐI KHÔNG được mô tả người. Chỉ mô tả landscape/environment.
-4. **Selective but Active**: Chọn đúng nhân vật cho từng cảnh, nhưng phải chủ động gán - không để trống nếu cảnh có người.`
+2. **DO NOT RE-DESCRIBE APPEARANCE**: KHÔNG mô tả lại ngoại hình nhân vật (kiểu tóc, màu tóc, trang phục) trong visual_context. Chỉ dùng TÊN nhân vật. Ngoại hình sẽ được lấy từ ảnh reference, KHÔNG từ text.
+3. **ACTION FOCUS**: Trong visual_context, CHỈ mô tả HÀNH ĐỘNG, TƯ THẾ, VỊ TRÍ của nhân vật. VD: "[Tên] đang chạy", "[Tên] ngồi bên cửa sổ", KHÔNG PHẢI "Cô gái tóc dài đen mặc áo xanh...".
+4. **No Ghost People**: NẾU cảnh KHÔNG có character_ids, visual_context TUYỆT ĐỐI KHÔNG được mô tả người. Chỉ mô tả landscape/environment.
+5. **Selective but Active**: Chọn đúng nhân vật cho từng cảnh, nhưng phải chủ động gán - không để trống nếu cảnh có người.`
         : '';
+
 
     // Build product instructions
     const productInstructions = productListString
