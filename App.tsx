@@ -20,6 +20,9 @@ import { UserProfileModal } from './components/modals/UserProfileModal';
 import { ActivationScreen } from './components/ActivationScreen';
 import { APP_NAME, PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from './constants/presets';
 import { handleDownloadAll } from './utils/zipUtils';
+import { Scene } from './types';
+import { generateId } from './utils/helpers';
+
 
 // Import Hooks
 import { useStateManager } from './hooks/useStateManager';
@@ -163,6 +166,64 @@ const App: React.FC = () => {
         { keys: 'ctrl+y', callback: redo },
         { keys: 'ctrl+shift+z', callback: redo },
     ]);
+
+    // Handle Insert Angles: Create new scenes with different camera angles from source image
+    const handleInsertAngles = useCallback(async (sourceSceneId: string, angles: string[], sourceImage: string) => {
+        const sourceScene = state.scenes.find(s => s.id === sourceSceneId);
+        if (!sourceScene) return;
+
+        const sourceIndex = state.scenes.findIndex(s => s.id === sourceSceneId);
+
+        // Map angle values to readable names for prompt
+        const angleNameMap: Record<string, string> = {
+            'wide_shot': 'Wide Shot (WS)',
+            'medium_shot': 'Medium Shot (MS)',
+            'close_up': 'Close Up (CU)',
+            'extreme_close_up': 'Extreme Close Up (ECU)',
+            'low_angle': 'Low Angle (Worm Eye View)',
+            'high_angle': 'High Angle (Bird Eye View)',
+            'over_shoulder': 'Over The Shoulder Shot (OTS)',
+            'dutch_angle': 'Dutch Angle (Tilted Frame)',
+        };
+
+        // Create new scenes for each angle
+        const newScenes: Scene[] = angles.map((angle, i) => ({
+            id: generateId(),
+            sceneNumber: `${sourceIndex + 2 + i}`, // Will be renumbered
+            groupId: sourceScene.groupId,
+            language1: sourceScene.language1,
+            vietnamese: sourceScene.vietnamese,
+            promptName: `${sourceScene.promptName || 'Scene'} - ${angleNameMap[angle] || angle}`,
+            contextDescription: `${sourceScene.contextDescription}\n\n[CAMERA ANGLE: ${angleNameMap[angle] || angle}]`,
+            visualDescription: sourceScene.visualDescription,
+            characterIds: [...sourceScene.characterIds],
+            productIds: [...(sourceScene.productIds || [])],
+            cameraAngleOverride: angle === 'custom' ? '' : angle,
+            generatedImage: null,
+            veoPrompt: '',
+            isGenerating: true, // Start as generating
+            error: null,
+        }));
+
+        // Insert new scenes after source scene and renumber
+        updateStateAndRecord(s => {
+            const updatedScenes = [...s.scenes];
+            updatedScenes.splice(sourceIndex + 1, 0, ...newScenes);
+            const renumbered = updatedScenes.map((sc, idx) => ({
+                ...sc,
+                sceneNumber: `${idx + 1}`
+            }));
+            return { ...s, scenes: renumbered };
+        });
+
+        // Generate images for each new scene (with small delay between each)
+        for (let i = 0; i < newScenes.length; i++) {
+            setTimeout(() => {
+                performImageGeneration(newScenes[i].id);
+            }, i * 500); // 500ms delay between each
+        }
+    }, [state.scenes, updateStateAndRecord, performImageGeneration]);
+
 
     // Sticky Header Scroll Listener
     useEffect(() => {
@@ -591,6 +652,7 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                             }))
                                         }));
                                     }}
+                                    onInsertAngles={handleInsertAngles}
                                 />
                                 <div className="flex justify-end mt-8 gap-4">
                                     <button

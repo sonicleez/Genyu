@@ -1,8 +1,20 @@
-import React, { useRef } from 'react';
-import { GripVertical, Copy, Download } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { GripVertical, Copy, Download, Layers } from 'lucide-react';
 import { Scene, Character, Product } from '../../types';
 import { ExpandableTextarea } from '../common/ExpandableTextarea';
 import { CAMERA_ANGLES, LENS_OPTIONS, TRANSITION_TYPES, VEO_MODES, VEO_PRESETS } from '../../constants/presets';
+
+// Preset angles for Insert Angles feature
+const INSERT_ANGLE_OPTIONS = [
+    { value: 'wide_shot', label: 'Wide Shot (WS)' },
+    { value: 'medium_shot', label: 'Medium Shot (MS)' },
+    { value: 'close_up', label: 'Close Up (CU)' },
+    { value: 'extreme_close_up', label: 'Extreme Close Up (ECU)' },
+    { value: 'low_angle', label: 'Low Angle (Worm Eye)' },
+    { value: 'high_angle', label: 'High Angle (Bird Eye)' },
+    { value: 'over_shoulder', label: 'Over The Shoulder (OTS)' },
+    { value: 'dutch_angle', label: 'Dutch Angle (Tilted)' },
+];
 
 export interface SceneRowProps {
     scene: Scene;
@@ -21,6 +33,7 @@ export interface SceneRowProps {
     onDrop: (index: number) => void;
     generateVeoPrompt: (sceneId: string) => void;
     onCopyPreviousStyle?: () => void;
+    onInsertAngles?: (sceneId: string, angles: string[], sourceImage: string) => void;
 }
 
 export const SceneRow: React.FC<SceneRowProps> = ({
@@ -28,9 +41,13 @@ export const SceneRow: React.FC<SceneRowProps> = ({
     generateImage, generateEndFrame, openImageViewer,
     onDragStart, onDragOver, onDrop,
     generateVeoPrompt,
-    onCopyPreviousStyle
+    onCopyPreviousStyle,
+    onInsertAngles
 }) => {
     const endFrameInputRef = useRef<HTMLInputElement>(null);
+    const [showAnglesDropdown, setShowAnglesDropdown] = useState(false);
+    const [selectedAngles, setSelectedAngles] = useState<string[]>([]);
+
 
     const handleEndFrameUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -436,21 +453,87 @@ export const SceneRow: React.FC<SceneRowProps> = ({
                     </div>
                 )}
 
-                <button
-                    onClick={generateImage}
-                    disabled={scene.isGenerating}
-                    className={`w-full py-2 font-bold text-xs rounded shadow-lg transition-all transform active:scale-95 flex items-center justify-center space-x-2
-                        ${scene.generatedImage
-                            ? 'bg-gray-700 text-white hover:bg-gray-600'
-                            : 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                    {scene.generatedImage ? (
-                        <><span>↻</span> <span>Tạo Lại</span></>
-                    ) : (
-                        <><span>✨</span> <span>Tạo Ảnh AI</span></>
+                {/* Button Row: Generate Image + Insert Angles */}
+                <div className="flex gap-1.5">
+                    <button
+                        onClick={generateImage}
+                        disabled={scene.isGenerating}
+                        className={`flex-1 py-1.5 font-bold text-[10px] rounded shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-1
+                            ${scene.generatedImage
+                                ? 'bg-gray-700 text-white hover:bg-gray-600'
+                                : 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                        {scene.generatedImage ? (
+                            <><span>↻</span><span>Tạo Lại</span></>
+                        ) : (
+                            <><span>✨</span><span>Tạo Ảnh</span></>
+                        )}
+                    </button>
+
+                    {/* Insert Angles Button */}
+                    {scene.generatedImage && onInsertAngles && (
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowAnglesDropdown(!showAnglesDropdown)}
+                                disabled={scene.isGenerating}
+                                className="px-2 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-[10px] rounded shadow-lg transition-all flex items-center gap-1 disabled:opacity-50"
+                                title="Tạo thêm góc máy từ ảnh này"
+                            >
+                                <Layers size={12} />
+                                <span>+Góc</span>
+                            </button>
+
+                            {/* Angles Dropdown */}
+                            {showAnglesDropdown && (
+                                <div className="absolute right-0 bottom-full mb-1 w-56 bg-gray-900 border border-purple-500 rounded-lg shadow-xl z-50 p-2">
+                                    <div className="text-[9px] text-purple-300 font-bold mb-1.5 uppercase tracking-wider">Chọn góc máy cần tạo</div>
+                                    <div className="max-h-40 overflow-y-auto space-y-1">
+                                        {INSERT_ANGLE_OPTIONS.map(angle => (
+                                            <label key={angle.value} className="flex items-center gap-2 cursor-pointer hover:bg-gray-800 p-1 rounded">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedAngles.includes(angle.value)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedAngles([...selectedAngles, angle.value]);
+                                                        } else {
+                                                            setSelectedAngles(selectedAngles.filter(a => a !== angle.value));
+                                                        }
+                                                    }}
+                                                    className="w-3 h-3 accent-purple-500"
+                                                />
+                                                <span className="text-[10px] text-gray-300">{angle.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <div className="flex gap-1 mt-2 pt-2 border-t border-gray-700">
+                                        <button
+                                            onClick={() => { setShowAnglesDropdown(false); setSelectedAngles([]); }}
+                                            className="flex-1 text-[9px] text-gray-400 hover:text-white py-1 rounded bg-gray-800"
+                                        >
+                                            Hủy
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (selectedAngles.length > 0 && scene.generatedImage) {
+                                                    onInsertAngles(scene.id, selectedAngles, scene.generatedImage);
+                                                    setShowAnglesDropdown(false);
+                                                    setSelectedAngles([]);
+                                                }
+                                            }}
+                                            disabled={selectedAngles.length === 0}
+                                            className="flex-1 text-[9px] text-white py-1 rounded bg-purple-600 hover:bg-purple-500 disabled:opacity-50 font-bold"
+                                        >
+                                            Tạo {selectedAngles.length > 0 ? `(${selectedAngles.length})` : ''}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     )}
-                </button>
+                </div>
+
             </div>
         </div >
     );

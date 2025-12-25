@@ -43,6 +43,7 @@ interface ScenesMapSectionProps {
     dragOverIndex: number | null;
     setDragOverIndex: (idx: number | null) => void;
     onClearAllImages: () => void;
+    onInsertAngles?: (sceneId: string, angles: string[], sourceImage: string) => void;
 }
 
 export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
@@ -81,7 +82,8 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
     setDraggedSceneIndex,
     dragOverIndex,
     setDragOverIndex,
-    onClearAllImages
+    onClearAllImages,
+    onInsertAngles
 }) => {
     return (
         <div className="my-16">
@@ -406,6 +408,7 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                                                 setDragOverIndex(null);
                                                 (window as any).dragOverIndex = null;
                                             }}
+                                            onInsertAngles={onInsertAngles}
                                         />
 
                                         {/* Last Insert Button */}
