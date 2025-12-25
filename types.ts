@@ -43,7 +43,15 @@ export interface SceneGroup {
   customStyleInstruction?: string; // Optional: Custom style prompt for this group
   conceptImage?: string | null; // AI-generated reference image for the group's location
   pacing?: 'slow' | 'medium' | 'fast'; // Narrative rhythm for the group
+
+  // Time & Weather Consistency (NEW)
+  timeOfDay?: 'dawn' | 'morning' | 'noon' | 'afternoon' | 'sunset' | 'dusk' | 'night' | 'custom';
+  customTimeOfDay?: string; // Custom time description
+  weather?: 'clear' | 'cloudy' | 'overcast' | 'rainy' | 'snowy' | 'foggy' | 'stormy' | 'custom';
+  customWeather?: string; // Custom weather description
+  lightingMood?: string; // e.g., "warm golden hour", "harsh midday sun", "cold blue moonlight"
 }
+
 
 export interface Scene {
   id: string;

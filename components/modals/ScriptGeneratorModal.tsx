@@ -410,7 +410,92 @@ export const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({
                                                         </button>
                                                     ))}
                                                 </div>
+
+                                                {/* Time & Weather Consistency Controls */}
+                                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                                    <span className="text-[9px] font-bold text-gray-500 uppercase">⏰ Thời gian:</span>
+                                                    <select
+                                                        value={group.timeOfDay || ''}
+                                                        onChange={(e) => {
+                                                            const newGroups = [...previewData.groups];
+                                                            newGroups[groupIdx].timeOfDay = e.target.value || undefined;
+                                                            setPreviewData({ ...previewData, groups: newGroups });
+                                                        }}
+                                                        className="bg-gray-900/50 border border-cyan-500/30 rounded px-2 py-0.5 text-[9px] text-cyan-200 outline-none"
+                                                    >
+                                                        <option value="">Auto</option>
+                                                        <option value="dawn">🌅 Bình minh</option>
+                                                        <option value="morning">☀️ Sáng</option>
+                                                        <option value="noon">🌞 Trưa</option>
+                                                        <option value="afternoon">🌤️ Chiều</option>
+                                                        <option value="sunset">🌇 Hoàng hôn</option>
+                                                        <option value="dusk">🌆 Chạng vạng</option>
+                                                        <option value="night">🌙 Đêm</option>
+                                                        <option value="custom">✏️ Tùy chỉnh</option>
+                                                    </select>
+                                                    {group.timeOfDay === 'custom' && (
+                                                        <input
+                                                            value={group.customTimeOfDay || ''}
+                                                            onChange={(e) => {
+                                                                const newGroups = [...previewData.groups];
+                                                                newGroups[groupIdx].customTimeOfDay = e.target.value;
+                                                                setPreviewData({ ...previewData, groups: newGroups });
+                                                            }}
+                                                            placeholder="VD: 3 giờ sáng..."
+                                                            className="bg-gray-900/50 border border-cyan-500/30 rounded px-2 py-0.5 text-[9px] text-cyan-200 outline-none w-24"
+                                                        />
+                                                    )}
+
+                                                    <span className="text-[9px] font-bold text-gray-500 uppercase ml-2">🌤️ Thời tiết:</span>
+                                                    <select
+                                                        value={group.weather || ''}
+                                                        onChange={(e) => {
+                                                            const newGroups = [...previewData.groups];
+                                                            newGroups[groupIdx].weather = e.target.value || undefined;
+                                                            setPreviewData({ ...previewData, groups: newGroups });
+                                                        }}
+                                                        className="bg-gray-900/50 border border-amber-500/30 rounded px-2 py-0.5 text-[9px] text-amber-200 outline-none"
+                                                    >
+                                                        <option value="">Auto</option>
+                                                        <option value="clear">☀️ Quang đãng</option>
+                                                        <option value="cloudy">⛅ Có mây</option>
+                                                        <option value="overcast">☁️ U ám</option>
+                                                        <option value="rainy">🌧️ Mưa</option>
+                                                        <option value="snowy">❄️ Tuyết</option>
+                                                        <option value="foggy">🌫️ Sương mù</option>
+                                                        <option value="stormy">⛈️ Giông bão</option>
+                                                        <option value="custom">✏️ Tùy chỉnh</option>
+                                                    </select>
+                                                    {group.weather === 'custom' && (
+                                                        <input
+                                                            value={group.customWeather || ''}
+                                                            onChange={(e) => {
+                                                                const newGroups = [...previewData.groups];
+                                                                newGroups[groupIdx].customWeather = e.target.value;
+                                                                setPreviewData({ ...previewData, groups: newGroups });
+                                                            }}
+                                                            placeholder="VD: mưa phùn nhẹ..."
+                                                            className="bg-gray-900/50 border border-amber-500/30 rounded px-2 py-0.5 text-[9px] text-amber-200 outline-none w-28"
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                {/* Lighting Mood */}
+                                                <div className="mt-2 flex items-center gap-2">
+                                                    <span className="text-[9px] font-bold text-gray-500 uppercase">💡 Ánh sáng:</span>
+                                                    <input
+                                                        value={group.lightingMood || ''}
+                                                        onChange={(e) => {
+                                                            const newGroups = [...previewData.groups];
+                                                            newGroups[groupIdx].lightingMood = e.target.value;
+                                                            setPreviewData({ ...previewData, groups: newGroups });
+                                                        }}
+                                                        placeholder="VD: warm golden hour, cold blue moonlight..."
+                                                        className="flex-1 bg-gray-900/50 border border-yellow-500/30 rounded px-2 py-0.5 text-[9px] text-yellow-200 outline-none"
+                                                    />
+                                                </div>
                                             </div>
+
 
                                             <div className="flex flex-col items-center gap-2">
                                                 {group.conceptImage ? (

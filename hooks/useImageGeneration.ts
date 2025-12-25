@@ -207,14 +207,44 @@ export function useImageGeneration(
 
             // GLOBAL ENVIRONMENT ANCHOR (To prevent drift within group)
             let groupEnvAnchor = '';
+            let timeWeatherLock = '';
             if (sceneToUpdate.groupId) {
                 const groupObj = currentState.sceneGroups?.find(g => g.id === sceneToUpdate.groupId);
                 if (groupObj) {
                     groupEnvAnchor = `GLOBAL SETTING: ${groupObj.description.toUpperCase()}.`;
+
+                    // TIME & WEATHER CONSISTENCY LOCK
+                    const timeParts: string[] = [];
+
+                    // Time of Day
+                    if (groupObj.timeOfDay) {
+                        const timeStr = groupObj.timeOfDay === 'custom'
+                            ? (groupObj.customTimeOfDay || '')
+                            : groupObj.timeOfDay.toUpperCase();
+                        if (timeStr) timeParts.push(`TIME: ${timeStr}`);
+                    }
+
+                    // Weather
+                    if (groupObj.weather) {
+                        const weatherStr = groupObj.weather === 'custom'
+                            ? (groupObj.customWeather || '')
+                            : groupObj.weather.toUpperCase();
+                        if (weatherStr) timeParts.push(`WEATHER: ${weatherStr}`);
+                    }
+
+                    // Lighting Mood
+                    if (groupObj.lightingMood) {
+                        timeParts.push(`LIGHTING: ${groupObj.lightingMood.toUpperCase()}`);
+                    }
+
+                    if (timeParts.length > 0) {
+                        timeWeatherLock = `[TIME/WEATHER LOCK - STRICT CONSISTENCY]: ${timeParts.join(', ')}. ALL scenes in this group MUST have IDENTICAL lighting direction, shadow angles, sky color, and atmospheric conditions.`;
+                    }
                 }
             }
 
-            let finalImagePrompt = `${authoritativeStyle} ${scaleCmd} ${coreActionPrompt} ${groupEnvAnchor} ${charPrompt} FULL SCENE VISUALS: ${cleanedContext}. STYLE DETAILS: ${metaTokens}. TECHNICAL: (STRICT CAMERA: ${cinematographyPrompt ? cinematographyPrompt : 'High Quality'}).`.trim();
+
+            let finalImagePrompt = `${authoritativeStyle} ${scaleCmd} ${coreActionPrompt} ${groupEnvAnchor} ${timeWeatherLock} ${charPrompt} FULL SCENE VISUALS: ${cleanedContext}. STYLE DETAILS: ${metaTokens}. TECHNICAL: (STRICT CAMERA: ${cinematographyPrompt ? cinematographyPrompt : 'High Quality'}).`.trim();
 
             if (refinementPrompt) {
                 finalImagePrompt = `REFINEMENT: ${refinementPrompt}. BASE PROMPT: ${finalImagePrompt}`;
