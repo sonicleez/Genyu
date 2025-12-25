@@ -139,7 +139,7 @@ export function useScriptGeneration(
         }
     }, [state, userApiKey, setApiKeyModalOpen]);
 
-    const handleRegenerateGroup = useCallback(async (detailedStory: string, groupToRegen: any, allGroups: any[]) => {
+    const handleRegenerateGroup = useCallback(async (detailedStory: string, groupToRegen: any, allGroups: any[], sceneCount?: number) => {
         const rawApiKey = userApiKey || (process.env as any).API_KEY;
         const apiKey = typeof rawApiKey === 'string' ? rawApiKey.trim() : rawApiKey;
         if (!apiKey) {
@@ -166,7 +166,8 @@ export function useScriptGeneration(
                 state.products || [],
                 effectiveLanguage,
                 state.customScriptInstruction,
-                groupToRegen.pacing
+                groupToRegen.pacing,
+                sceneCount
             );
 
             const [modelId, thinkingLevel] = (state.scriptModel || 'gemini-3-flash-preview|high').split('|');

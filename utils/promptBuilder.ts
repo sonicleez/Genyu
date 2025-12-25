@@ -173,7 +173,8 @@ export function buildGroupRegenerationPrompt(
     products: Product[],
     language: string,
     customInstruction?: string,
-    pacing?: 'slow' | 'medium' | 'fast'
+    pacing?: 'slow' | 'medium' | 'fast',
+    sceneCount?: number
 ): string {
     const availableCharacters = characters
         .filter(c => c.name.trim() !== '')
@@ -231,7 +232,7 @@ ${allGroups.map(g => `- ${g.name}: ${g.description}`).join('\n')}
 ---
 
 **REQUIREMENTS:**
-1. Create a logical sequence of 4-8 scenes for THIS GROUP ONLY. Ensure a complete and rich narrative flow for this specific location.
+1. Create a logical sequence of ${sceneCount || '4-8'} scenes for THIS GROUP ONLY. Ensure a complete and rich narrative flow for this specific location.
 1. Return ONLY the JSON. No conversational filler.
 2. Write in ${language}.
 

@@ -20,7 +20,7 @@ export interface ScriptGeneratorModalProps {
     onCustomInstructionChange?: (val: string) => void;
     onAddPreset: (preset: ScriptPreset) => void;
     onApplyGenerated: (detailedStory: string, groups: any[], scenes: any[]) => void;
-    onRegenerateGroup: (detailedStory: string, groupToRegen: any, allGroups: any[]) => Promise<any[] | null>;
+    onRegenerateGroup: (detailedStory: string, groupToRegen: any, allGroups: any[], sceneCount?: number) => Promise<any[] | null>;
     onGenerateMoodboard: (groupName: string, groupDesc: string, style?: string, customStyle?: string) => Promise<string | null>;
     scriptModel: string;
     onScriptModelChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
@@ -128,7 +128,12 @@ export const ScriptGeneratorModal: React.FC<ScriptGeneratorModalProps> = ({
 
     const handleRegenGroupInternal = async (group: any) => {
         if (!previewData) return;
-        const newScenesForGroup = await onRegenerateGroup(previewData.detailedStory, group, previewData.groups);
+
+        // Calculate original scene count for this group
+        const groupScenes = previewData.scenes.filter(s => s.group_id === group.id);
+        const originalCount = groupScenes.length;
+
+        const newScenesForGroup = await onRegenerateGroup(previewData.detailedStory, group, previewData.groups, originalCount);
         if (newScenesForGroup) {
             // Filter out old scenes for this group and add new ones
             const otherScenes = previewData.scenes.filter(s => s.group_id !== group.id);
