@@ -74,36 +74,70 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
     const containerRef = useRef<HTMLDivElement>(null);
 
+    // Helper: Convert URL to base64 (handles Supabase URLs from saved projects)
+    const ensureBase64Image = async (imageStr: string): Promise<string> => {
+        if (imageStr.startsWith('data:')) return imageStr;
+
+        try {
+            // Direct fetch (Supabase has proper CORS headers)
+            const response = await fetch(imageStr);
+            if (!response.ok) throw new Error('Fetch failed');
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (err) {
+            console.error('[Editor] Failed to convert URL to base64:', err);
+            // Fallback: try proxy if available
+            try {
+                const proxyResponse = await fetch(`http://localhost:3001/api/proxy/fetch-image?url=${encodeURIComponent(imageStr)}`);
+                if (!proxyResponse.ok) throw new Error('Proxy fetch failed');
+                const blob = await proxyResponse.blob();
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            } catch (proxyErr) {
+                console.error('[Editor] Proxy fallback also failed:', proxyErr);
+                throw new Error('Could not load image from URL');
+            }
+        }
+    };
 
     // Initial Load & CORS Handling
     useEffect(() => {
         if (isOpen && sourceImage) {
-            if (!sourceImage.startsWith('data:')) {
-                const img = new Image();
-                img.crossOrigin = "Anonymous";
-                img.src = sourceImage;
-                img.onload = () => {
-                    setCurrentImage(sourceImage);
-                };
-                img.onerror = () => {
-                    console.log("Direct load failed, trying proxy for CORS...");
-                    fetch(`http://localhost:3001/api/proxy/fetch-image?url=${encodeURIComponent(sourceImage)}`)
-                        .then(res => res.blob())
-                        .then(blob => {
-                            const reader = new FileReader();
-                            reader.onloadend = () => setCurrentImage(reader.result as string);
-                            reader.readAsDataURL(blob);
-                        })
-                        .catch(err => console.error("Proxy fetch failed:", err));
+            // Always convert to base64 to ensure processing functions work correctly
+            const loadImage = async () => {
+                try {
+                    const base64Image = await ensureBase64Image(sourceImage);
+                    setCurrentImage(base64Image);
+
+                    if (initialHistory && initialHistory.length > 0) {
+                        // Also convert history images if they are URLs
+                        const convertedHistory = await Promise.all(
+                            initialHistory.map(async (h) => ({
+                                ...h,
+                                image: await ensureBase64Image(h.image),
+                                resolution: h.resolution || '1k'
+                            }))
+                        );
+                        setHistory(convertedHistory);
+                    } else {
+                        setHistory([{ id: 'original', image: base64Image, prompt: 'Original', resolution: '1k' }]);
+                    }
+                } catch (err) {
+                    console.error('[Editor] Failed to load image:', err);
+                    setError('Không thể tải ảnh. Vui lòng thử lại.');
                 }
-            } else {
-                setCurrentImage(sourceImage);
-            }
-            if (initialHistory && initialHistory.length > 0) {
-                setHistory(initialHistory.map(h => ({ ...h, resolution: h.resolution || '1k' })));
-            } else {
-                setHistory([{ id: 'original', image: sourceImage, prompt: 'Original', resolution: '1k' }]);
-            }
+            };
+
+            loadImage();
             setCurrentResolution('1k');
             setAnalysisTags(null);
             setLayerImage(null);
@@ -507,12 +541,18 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
     };
 
     // View Selection Handlers
-    const switchView = (viewKey: string, imageUrl: string | null) => {
+    const switchView = async (viewKey: string, imageUrl: string | null) => {
         if (!imageUrl) return;
-        setCurrentImage(imageUrl);
-        setCurrentView(viewKey);
-        setCurrentResolution('1k');
-        setHistory([{ id: generateId(), image: imageUrl, prompt: 'Original', resolution: '1k' }]);
+        try {
+            const base64Image = await ensureBase64Image(imageUrl);
+            setCurrentImage(base64Image);
+            setCurrentView(viewKey);
+            setCurrentResolution('1k');
+            setHistory([{ id: generateId(), image: base64Image, prompt: 'Original', resolution: '1k' }]);
+        } catch (err) {
+            console.error('[Editor] Failed to switch view:', err);
+            setError('Không thể chuyển view. Vui lòng thử lại.');
+        }
     };
 
     const ViewNavigator = () => {
