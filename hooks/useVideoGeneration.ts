@@ -65,47 +65,47 @@ export function useVideoGeneration(
             const selectedPreset = VEO_PRESETS.find(p => p.value === scene.veoPreset) || VEO_PRESETS[0];
 
             const promptText = `
-             Role: Expert Video Prompt Designer for Google Veo 3.1.
-             
-             **THE OFFICIAL VEO 3.1 FRAMEWORK:**
-             Follow this exact five-part formula for high-quality generation:
-             [Cinematography] + [Subject] + [Action] + [Context] + [Style & Ambiance] + [Soundstage (SFX/Ambient)] + [Emotion Tag]
-             
-             **EXPERIMENTAL FEATURE: TIMESTAMP PROMPTING**
-             For multi-shot sequences, use timestamps to direct precise cinematic pacing:
-             [00:00-00:02] [Action 1 with Shot Type]
-             [00:02-00:04] [Action 2 with Reverse Shot/Tracking]
-             [00:04-00:06] [Action 3 with Close-up]
-             ...and so on.
-             
-             **INPUT DATA:**
-             - Vision: Keyframe Image Provided (Use as foundation).
-             - Scene Description: "${context}"
-             - Intent: "${promptName}"
-             - Dialogue: "${scriptText}"
-             - Featured Products: "${productContext}"
-             - Technical Directives: "${scene.cameraAngleOverride === 'custom' ? scene.customCameraAngle : (CAMERA_ANGLES.find(a => a.value === scene.cameraAngleOverride)?.label || 'Auto')} | ${scene.lensOverride === 'custom' ? scene.customLensOverride : (LENS_OPTIONS.find(l => l.value === scene.lensOverride)?.label || 'Auto')}"
-             - Preset Mode: "${selectedPreset.label}"
-             - PRESET INSTRUCTION: "${selectedPreset.prompt}"
-             
-             **GENERATION INSTRUCTIONS:**
-             1. **Mode Check:** 
-                - If Preset Mode indicates "Single Shot", generate one cohesive formula string starting with [00:00-00:06].
-                - If Preset Mode indicates "Multi-Shot", you MUST generate exactly 3-4 segments using timestamps (e.g., [00:00-00:02], [00:02-00:04], etc.).
-             2. **Formula Adherence:** Every segment (or single shot) MUST follow: [Cinematography] + [Subject] + [Action] + [Context] + [Style & Ambiance].
-             3. **Quality Examples:**
-                - *Single Shot Example:* [00:00-00:06] Wide shot, Kaya stands purposefully, in a rugged fur-lined tent with firelight flickering, photorealistic cinematic style. SFX: crackling fire. Emotion: Determination.
-                - *Multi-Shot Example:* 
-                  [00:00-00:02] Medium shot of Kaya looking at the camera, in a dim tent.
-                  [00:02-00:04] Close-up of Kaya's hands tightening a leather belt.
-                  [00:04-00:06] Reverse shot showing Kaya's resolute expression.
-                  Emotion: Readiness. SFX: leather creaking.
-             4. **Audio & Emotion:** Integrate SFX, Ambient, and Emotion tags as requested.
-             5. **Technical:** Incorporate Lens ("${scene.lensOverride}") and Angle ("${scene.cameraAngleOverride}") directives naturally.
-             
-             **OUTPUT:**
-             Return ONLY the prompt string.
-             `;
+Role: Expert Video Prompt Designer for Google Veo 3.1 IMAGE-TO-VIDEO mode.
+
+**CRITICAL: IMAGE-TO-VIDEO MODE**
+You are generating a prompt to ANIMATE the provided keyframe image. The image is your PRIMARY REFERENCE.
+- DESCRIBE what you SEE in the image (subject, environment, lighting, colors)
+- ANIMATE what's ALREADY visible - don't invent new elements
+- MAINTAIN the exact visual style, colors, and composition from the image
+
+**THE OFFICIAL VEO 3.1 FORMULA:**
+[Cinematography] + [Subject from image] + [Animation/Action] + [Context from image] + [Style matching image] + [SFX/Ambient] + [Emotion]
+
+**SOURCE IMAGE CONTEXT (from user):**
+- Scene Description: "${context}"
+- Scene Intent: "${promptName}"
+- Dialogue/Script: "${scriptText}"
+- Products visible: "${productContext}"
+- Camera Angle: "${scene.cameraAngleOverride === 'custom' ? scene.customCameraAngle : (CAMERA_ANGLES.find(a => a.value === scene.cameraAngleOverride)?.label || 'Auto')}"
+- Lens Style: "${scene.lensOverride === 'custom' ? scene.customLensOverride : (LENS_OPTIONS.find(l => l.value === scene.lensOverride)?.label || 'Auto')}"
+
+**PRESET MODE: ${selectedPreset.label}**
+${selectedPreset.prompt}
+
+**GENERATION RULES FOR IMAGE-TO-VIDEO:**
+1. START by analyzing the keyframe image - describe its visual elements
+2. The [Subject] in your prompt = the subject VISIBLE in the image
+3. The [Context] = the environment VISIBLE in the image  
+4. The [Style] = match the lighting, colors, and aesthetic of the image
+5. Add MOTION that makes sense for what's in the image
+6. Include SFX and Emotion tags appropriate to the scene
+
+**PRESET-SPECIFIC RULES:**
+- If "Single Shot": One continuous 6-second animation of the image, subtle camera movement
+- If "Dialogue/Multi-Shot": Describe the character from the image speaking, use shot/reverse if applicable
+- If "Action": Animate dynamic movement FROM the pose visible in the image
+- If "Mood": Slow, atmospheric animation with emphasis on lighting from the image
+- If "Macro": Animate subtle micro-movements of the focused element in the image
+- If "Epic": Add camera reveal movement starting from the image's composition
+
+**OUTPUT FORMAT:**
+Return ONLY the video prompt string. NO explanations, NO markdown.
+`;
 
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
