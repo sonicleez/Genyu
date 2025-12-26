@@ -132,6 +132,65 @@ export function useVideoGeneration(
         }
 
         try {
+            // STEP 1: DOP Auto-Suggest Presets for scenes without preset
+            const scenesNeedingPreset = scenesToProcess.filter(s => !s.veoPreset);
+            if (scenesNeedingPreset.length > 0) {
+                console.log('[DOP Veo] Auto-suggesting presets for', scenesNeedingPreset.length, 'scenes...');
+
+                const ai = new GoogleGenAI({ apiKey });
+                const scenesInfo = scenesNeedingPreset.map(s =>
+                    `ID: ${s.id}, Context: ${s.contextDescription}, Script: ${s.vietnamese || s.language1}, Angle: ${s.cameraAngleOverride || 'auto'}`
+                ).join('\n');
+                const presetsInfo = VEO_PRESETS.map(p => `${p.value}: ${p.label}`).join('\n');
+
+                const dopPrompt = `
+                Role: You are a DOP (Director of Photography) analyzing scenes to suggest the optimal Veo 3.1 preset.
+                
+                **PRESET SELECTION RULES:**
+                - "action-sequence": Scenes with running, fighting, chasing, explosions, quick movements
+                - "storytelling-multi": Dialogue heavy scenes, emotional beats, character interactions
+                - "cinematic-master": Establishing shots, artistic compositions, slow reveals, single steady shots
+                - "macro-detail": Product showcases, texture details, extreme close-ups
+                - "emotional-focus": Emotional character moments, crying, laughing, reactions
+                - "ambient-mood": Atmosphere building, environmental shots, mood pieces
+                
+                Available Presets:
+                ${presetsInfo}
+                
+                Scenes to analyze:
+                ${scenesInfo}
+                
+                Return ONLY a JSON object: {"scene_id": "preset_value", ...}
+                `;
+
+                const result = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: [{ parts: [{ text: dopPrompt }] }],
+                    config: { responseMimeType: "application/json" }
+                });
+
+                const text = (result as any).text?.trim?.() || (result as any).text || '';
+                try {
+                    const mapping = JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+                    console.log('[DOP Veo] Preset suggestions:', mapping);
+
+                    updateStateAndRecord(s => ({
+                        ...s,
+                        scenes: s.scenes.map(scene => ({
+                            ...scene,
+                            veoPreset: mapping[scene.id] || scene.veoPreset || 'cinematic-master'
+                        }))
+                    }));
+
+                    // Wait for state update
+                    await new Promise(r => setTimeout(r, 300));
+                } catch (parseError) {
+                    console.error('[DOP Veo] Failed to parse preset suggestions:', parseError);
+                }
+            }
+
+            // STEP 2: Generate Veo prompts for all scenes
+            console.log('[Veo] Generating prompts for', scenesToProcess.length, 'scenes...');
             for (const scene of scenesToProcess) {
                 await generateVeoPrompt(scene.id);
                 await new Promise(r => setTimeout(r, 200));
@@ -139,7 +198,7 @@ export function useVideoGeneration(
         } finally {
             setIsVeoGenerating(false);
         }
-    }, [state.scenes, userApiKey, generateVeoPrompt, setApiKeyModalOpen]);
+    }, [state.scenes, userApiKey, generateVeoPrompt, setApiKeyModalOpen, updateStateAndRecord]);
 
     const handleGenerateAllVideos = useCallback(async () => {
         alert("Video generation currently requires an external integration and is disabled in this version.");
