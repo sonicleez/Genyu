@@ -700,6 +700,9 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                                             setDraggedSceneIndex(null);
                                             setDragOverIndex(null);
                                         }}
+                                        onInsertAngles={onInsertAngles}
+                                        generateVeoPrompt={generateVeoPrompt}
+                                        scenes={scenes}
                                     />
                                 )}
                             </React.Fragment>
