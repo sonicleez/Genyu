@@ -117,7 +117,8 @@ RULES:
 - Each scene should have voice-over text that takes ~3-4 seconds to read
 - If a VO segment needs multiple visuals, mark needsExpansion: true and add expansion scenes
 - Expansion scenes are B-roll (no voice-over) to visually illustrate the narration
-- For characters, suggest outfit based on the time period/context of each chapter
+- For characters, provide a HIGHLY DETAILED VISUAL DESCRIPTION suitable for Stable Diffusion/Midjourney. Include: Age, Ethnicity, Hair style/color, Facial features, Body type, and Initial Outfit (Chapter 1).
+- Identify Key Characters and supporting roles.
 
 RESPOND WITH JSON ONLY:
 {
@@ -133,10 +134,10 @@ RESPOND WITH JSON ONLY:
     {
       "name": "Character Name",
       "mentions": 5,
-      "suggestedDescription": "40-year-old man with sharp features",
+      "suggestedDescription": "Caucasian male, 40s, rugged face with stubble, piercing blue eyes, messy brown hair, athletic build. Wearing a worn leather jacket, grey t-shirt, and dark jeans.",
       "outfitByChapter": {
-        "chapter_1": "charcoal suit, silk tie",
-        "chapter_2": "casual teenager clothes"
+        "chapter_1": "worn leather jacket, grey t-shirt",
+        "chapter_2": "formal black tuxedo, bow tie"
       },
       "isMain": true
     }
