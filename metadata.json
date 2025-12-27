@@ -1,0 +1,5 @@
+{
+  "name": "Scitpt all in one",
+  "description": "Một khung ứng dụng web React đa năng với các tính năng lưu/mở, hoàn tác/làm lại, thu phóng và giao diện có thể tùy chỉnh. Được xây dựng bằng React, TypeScript và Tailwind CSS, sẵn sàng để mở rộng với chức năng Gemini API.",
+  "requestFramePermissions": []
+}

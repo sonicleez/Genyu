@@ -39,7 +39,7 @@ This project is a React (Vite) application with a Node.js backend proxy.
 
 2.  **Navigate to the project directory**:
     ```bash
-    cd "Testing Cookie"
+    cd "Main"
     ```
 
 3.  **Install Dependencies**:
