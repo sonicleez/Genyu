@@ -62,8 +62,14 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
     // Handle analyze
     const handleAnalyze = useCallback(async () => {
         if (!scriptText.trim()) return;
-        await analyzeScript(scriptText, readingSpeed, selectedModel);
-    }, [scriptText, readingSpeed, selectedModel, analyzeScript]);
+        await analyzeScript(
+            scriptText,
+            readingSpeed,
+            selectedModel,
+            selectedStyle || null,
+            selectedDirector || null
+        );
+    }, [scriptText, readingSpeed, selectedModel, analyzeScript, selectedStyle, selectedDirector]);
 
     // Handle import
     const handleImport = useCallback(() => {

@@ -71,7 +71,9 @@ export function useScriptAnalysis(userApiKey: string | null) {
     const analyzeScript = useCallback(async (
         scriptText: string,
         readingSpeed: 'slow' | 'medium' | 'fast' = 'medium',
-        modelSelector: string = 'gemini-2.0-flash|none' // format: model|thinkingLevel
+        modelSelector: string = 'gemini-2.0-flash|none', // format: model|thinkingLevel
+        characterStyle?: CharacterStyleDefinition | null,
+        director?: DirectorPreset | null
     ): Promise<ScriptAnalysisResult | null> => {
         if (!userApiKey) {
             setAnalysisError('API key required');
@@ -100,6 +102,18 @@ export function useScriptAnalysis(userApiKey: string | null) {
             };
             const thinkingBudget = thinkingBudgets[thinkingLevel] ?? undefined;
 
+            // Context Injection
+            let contextInstructions = "";
+            if (characterStyle) {
+                contextInstructions += `\nVISUAL STYLE CONSTRAINT: The user selected the character style "${characterStyle.name}" (${characterStyle.promptInjection.global}).\n- You MUST generate "suggestedDescription" that aligns with this style.\n- Example: If style is 'Faceless Mannequin', describe characters as "Faceless white mannequin wearing [Role Outfit]".\n- Example: If style is 'Anime', describe with anime features.\n- MAINTAIN script-accurate OUTFITS but change BODY/FACE to match the style.\n`;
+            } else {
+                contextInstructions += `\n- For characters, provide a HIGHLY DETAILED VISUAL DESCRIPTION (Age, Ethnicity, Hair, Face, Body, Initial Outfit).`;
+            }
+
+            if (director) {
+                contextInstructions += `\nDIRECTOR VISION: ${director.name} (${director.description}).\n- Frame scenes according to this director's style.\n`;
+            }
+
             const prompt = `Analyze this voice-over script for a documentary video. Return JSON only.
 
 SCRIPT:
@@ -108,16 +122,15 @@ ${scriptText}
 """
 
 TASK:
-1. Identify CHAPTER HEADERS (section titles like "Monte Carlo, March 2019" or "The Watchmaker")
-2. Extract CHARACTER NAMES mentioned (proper names only, not pronouns)
-3. Break into SCENES (each scene = 3-5 seconds of visuals, narrative beats)
-4. For each scene, create a VISUAL PROMPT describing what to show on screen
+1. Identify CHAPTER HEADERS
+2. Extract CHARACTER NAMES
+3. Break into SCENES (3-5s each)
+4. Create VISUAL PROMPTS
 
 RULES:
-- Each scene should have voice-over text that takes ~3-4 seconds to read
-- If a VO segment needs multiple visuals, mark needsExpansion: true and add expansion scenes
-- Expansion scenes are B-roll (no voice-over) to visually illustrate the narration
-- For characters, provide a HIGHLY DETAILED VISUAL DESCRIPTION suitable for Stable Diffusion/Midjourney. Include: Age, Ethnicity, Hair style/color, Facial features, Body type, and Initial Outfit (Chapter 1).
+- Each scene should have voice-over text (~3-4s)${contextInstructions}
+- If a VO segment needs multiple visuals, mark needsExpansion: true
+- Expansion scenes are B-roll
 - Identify Key Characters and supporting roles.
 
 RESPOND WITH JSON ONLY:
