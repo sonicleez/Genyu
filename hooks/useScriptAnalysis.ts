@@ -105,7 +105,7 @@ export function useScriptAnalysis(userApiKey: string | null) {
             // Context Injection
             let contextInstructions = "";
             if (characterStyle) {
-                contextInstructions += `\nVISUAL STYLE CONSTRAINT: The user selected the character style "${characterStyle.name}" (${characterStyle.promptInjection.global}).\n- You MUST generate "suggestedDescription" that aligns with this style.\n- Example: If style is 'Faceless Mannequin', describe characters as "Faceless white mannequin wearing [Role Outfit]".\n- Example: If style is 'Anime', describe with anime features.\n- MAINTAIN script-accurate OUTFITS but change BODY/FACE to match the style.\n`;
+                contextInstructions += `\nVISUAL STYLE CONSTRAINT: The user selected the character style "${characterStyle.name}" (${characterStyle.promptInjection.global}).\n- You MUST generate "suggestedDescription" that aligns with this style.\n- CRITICAL: You MUST extract the SPECIFIC OUTFIT (uniforms, period clothing, colors) from the script and apply it to the character.\n- Example: "Faceless white mannequin wearing a 1940s French Resistance leather jacket and wool cap".\n- DO NOT generate generic mannequins. They MUST wear the character's signature clothes.\n`;
             } else {
                 contextInstructions += `\n- For characters, provide a HIGHLY DETAILED VISUAL DESCRIPTION (Age, Ethnicity, Hair, Face, Body, Initial Outfit).`;
             }
