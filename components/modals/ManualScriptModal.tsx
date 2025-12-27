@@ -97,8 +97,8 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
                     </button>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Content - Only scroll when showing analysis result, otherwise allow dropdown overflow */}
+                <div className={`flex-1 p-6 space-y-6 ${analysisResult ? 'overflow-y-auto' : 'overflow-visible'}`}>
                     {!analysisResult ? (
                         // Step 1: Input Script
                         <>
@@ -119,8 +119,8 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
                                 </div>
                             </div>
 
-                            {/* Settings Row */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Settings Row - NO OVERFLOW to prevent dropdown clipping */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-20">
                                 {/* Reading Speed */}
                                 <div>
                                     <label className="block text-sm font-medium text-zinc-300 mb-2">
@@ -138,7 +138,7 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
                                 </div>
 
                                 {/* Character Style */}
-                                <div>
+                                <div className="relative">
                                     <label className="block text-sm font-medium text-zinc-300 mb-2">
                                         <Palette className="w-4 h-4 inline mr-1" /> Character Style
                                     </label>
@@ -153,7 +153,7 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
                                         {showStylePicker ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
                                     </button>
                                     {showStylePicker && (
-                                        <div className="absolute mt-1 w-72 bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl z-10 p-3 space-y-3">
+                                        <div className="absolute top-full left-0 mt-1 w-72 max-h-64 overflow-y-scroll bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl z-50 p-3 space-y-3 scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-zinc-800" style={{ scrollbarWidth: 'thin', scrollbarColor: '#52525b #27272a' }}>
                                             {Object.entries(stylesByCategory).map(([category, styles]) => (
                                                 styles.length > 0 && (
                                                     <div key={category}>
@@ -182,7 +182,7 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
                                 </div>
 
                                 {/* Director */}
-                                <div>
+                                <div className="relative">
                                     <label className="block text-sm font-medium text-zinc-300 mb-2">
                                         <Film className="w-4 h-4 inline mr-1" /> Director Style
                                     </label>
@@ -194,7 +194,7 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
                                         {showDirectorPicker ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
                                     </button>
                                     {showDirectorPicker && (
-                                        <div className="absolute mt-1 w-80 max-h-64 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl z-10 p-3">
+                                        <div className="absolute top-full left-0 mt-1 w-80 max-h-64 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl z-50 p-3">
                                             {(['documentary', 'cinema'] as DirectorCategory[]).map(category => (
                                                 <div key={category} className="mb-3">
                                                     <div className="text-xs text-zinc-500 uppercase mb-2">{category}</div>
