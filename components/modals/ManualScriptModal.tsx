@@ -50,7 +50,8 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
     const [sceneCountAdjustment, setSceneCountAdjustment] = useState(0);
 
     // Analysis hook
-    const { isAnalyzing, analysisResult, analysisError, analyzeScript, generateSceneMap } = useScriptAnalysis(userApiKey);
+    // Analysis hook
+    const { isAnalyzing, analysisResult, analysisError, analyzeScript, generateSceneMap, setAnalysisResult } = useScriptAnalysis(userApiKey);
 
     // Get selected items
     const selectedStyle = BUILT_IN_CHARACTER_STYLES.find(s => s.id === selectedStyleId);
@@ -418,7 +419,7 @@ John enters the room, wearing a tailored Armani suit..."
                     ) : (
                         <>
                             <button
-                                onClick={() => { setScriptText(''); }}
+                                onClick={() => { setAnalysisResult(null); }}
                                 className="px-4 py-2 text-zinc-400 hover:text-white transition-colors"
                             >
                                 ← Back to Edit
