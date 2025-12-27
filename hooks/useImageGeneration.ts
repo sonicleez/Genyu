@@ -278,8 +278,11 @@ export function useImageGeneration(
                 const activeDirector = [...allDirectors, ...customDirectors].find(d => d.id === currentState.activeDirectorId);
 
                 if (activeDirector) {
-                    directorDNAPrompt = `[DIRECTORIAL VISION - ${activeDirector.name.toUpperCase()}]: MANDATORY CINEMATIC STYLE. Apply the following visual DNA: ${activeDirector.dna}. ${activeDirector.description}. ALL visual elements must reflect this director's signature style.`;
-                    console.log('[ImageGen] 🎬 Director DNA injected:', activeDirector.name, activeDirector.dna);
+                    const cameraStyle = activeDirector.signatureCameraStyle
+                        ? `SIGNATURE CAMERA: ${activeDirector.signatureCameraStyle}.`
+                        : '';
+                    directorDNAPrompt = `[DIRECTORIAL VISION - ${activeDirector.name.toUpperCase()}]: MANDATORY CINEMATIC STYLE. Visual DNA: ${activeDirector.dna}. ${cameraStyle} ${activeDirector.description}. ALL visual elements and camera work must reflect this director's signature style.`;
+                    console.log('[ImageGen] 🎬 Director DNA injected:', activeDirector.name, '| DNA:', activeDirector.dna, '| Camera:', activeDirector.signatureCameraStyle);
                 }
             }
 
