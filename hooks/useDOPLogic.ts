@@ -9,6 +9,28 @@ export interface RaccordInsight {
     affectedIds?: string[];
 }
 
+// DOP Decision Agent Types
+export interface DopError {
+    type: string;
+    description: string;
+}
+
+export interface DecisionResult {
+    action: 'retry' | 'skip' | 'try_once';
+    reason: string;
+    enhancedPrompt?: string;
+    confidence: number; // 0-1
+}
+
+// Error classification for credit optimization
+const UNFIXABLE_KEYWORDS = [
+    'face', 'identity', 'completely different', 'wrong person',
+    'different character', 'unrecognizable', 'different face',
+    'facial features', 'different human', 'another person'
+];
+
+const FIXABLE_ERROR_TYPES = ['prop', 'lighting', 'spatial', 'position'];
+
 export function useDOPLogic(state: ProjectState) {
 
     /**
@@ -275,9 +297,158 @@ RESPOND IN JSON ONLY:
         }
     }, [state.characters, state.products]);
 
+    /**
+     * Quick Win: Classify errors as fixable or unfixable
+     * Saves credits by not retrying unfixable errors
+     */
+    const classifyErrors = useCallback((errors: DopError[]): {
+        fixable: DopError[];
+        unfixable: DopError[];
+        decision: 'retry' | 'skip' | 'try_once';
+    } => {
+        const fixable: DopError[] = [];
+        const unfixable: DopError[] = [];
+
+        for (const error of errors) {
+            const descLower = error.description.toLowerCase();
+            const typeLower = error.type.toLowerCase();
+
+            // Check if error contains unfixable keywords
+            const isUnfixable = UNFIXABLE_KEYWORDS.some(kw => descLower.includes(kw));
+
+            // Check if error type is known to be fixable
+            const isFixableType = FIXABLE_ERROR_TYPES.some(ft => typeLower.includes(ft));
+
+            if (isUnfixable) {
+                unfixable.push(error);
+            } else if (isFixableType) {
+                fixable.push(error);
+            } else {
+                // Unknown type - try once
+                fixable.push(error);
+            }
+        }
+
+        // Decision logic
+        if (unfixable.length > 0 && fixable.length === 0) {
+            return { fixable, unfixable, decision: 'skip' };
+        } else if (unfixable.length > 0) {
+            return { fixable, unfixable, decision: 'try_once' };
+        } else if (fixable.length > 0) {
+            return { fixable, unfixable, decision: 'retry' };
+        }
+
+        return { fixable, unfixable, decision: 'skip' };
+    }, []);
+
+    /**
+     * Full Decision Agent: Analyze if retry will succeed before wasting credits
+     * Uses Gemini to compare failed image with reference and decide
+     */
+    const makeRetryDecision = useCallback(async (
+        failedImage: string,
+        referenceImage: string,
+        originalPrompt: string,
+        errors: DopError[],
+        apiKey: string
+    ): Promise<DecisionResult> => {
+        // Quick classification first
+        const classification = classifyErrors(errors);
+
+        if (classification.decision === 'skip') {
+            console.log('[DOP Agent] Quick skip - errors are unfixable:', classification.unfixable);
+            return {
+                action: 'skip',
+                reason: `Unfixable errors detected: ${classification.unfixable.map(e => e.description).join(', ')}`,
+                confidence: 0.9
+            };
+        }
+
+        // If we have API key, use AI for deeper analysis
+        if (apiKey && failedImage && referenceImage) {
+            try {
+                const { GoogleGenAI } = await import('@google/genai');
+                const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+
+                // Prepare image data
+                const getImageData = async (img: string) => {
+                    if (img.startsWith('data:')) {
+                        const [header, data] = img.split(',');
+                        const mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+                        return { data, mimeType };
+                    }
+                    return null;
+                };
+
+                const failedData = await getImageData(failedImage);
+                const refData = await getImageData(referenceImage);
+
+                if (failedData && refData) {
+                    const agentPrompt = `You are a DOP Decision Agent. Analyze if retrying image generation will FIX the errors.
+
+ERRORS DETECTED:
+${errors.map(e => `- [${e.type}] ${e.description}`).join('\n')}
+
+ORIGINAL PROMPT:
+"${originalPrompt}"
+
+ANALYSIS TASK:
+1. Look at the FAILED IMAGE and the REFERENCE IMAGE
+2. Determine if the errors are FIXABLE by modifying the prompt
+3. Consider: Can text instructions fix face/identity issues? (Usually NO)
+4. Consider: Can text instructions fix prop/lighting issues? (Usually YES)
+
+RESPOND IN JSON ONLY:
+{
+  "action": "retry" | "skip" | "try_once",
+  "reason": "brief explanation",
+  "confidence": 0.0-1.0,
+  "enhancedPrompt": "if action is retry, provide SPECIFIC additions to fix the errors"
+}`;
+
+                    const response = await ai.models.generateContent({
+                        model: 'gemini-2.5-flash',
+                        contents: [
+                            { text: 'FAILED IMAGE:' },
+                            { inlineData: { data: failedData.data, mimeType: failedData.mimeType } },
+                            { text: 'REFERENCE IMAGE (should match):' },
+                            { inlineData: { data: refData.data, mimeType: refData.mimeType } },
+                            { text: agentPrompt }
+                        ]
+                    });
+
+                    const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                    const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+                    if (jsonMatch) {
+                        const result = JSON.parse(jsonMatch[0]);
+                        console.log('[DOP Agent] AI Decision:', result);
+                        return {
+                            action: result.action || 'try_once',
+                            reason: result.reason || 'AI analysis',
+                            enhancedPrompt: result.enhancedPrompt,
+                            confidence: result.confidence || 0.5
+                        };
+                    }
+                }
+            } catch (error) {
+                console.error('[DOP Agent] AI analysis failed:', error);
+            }
+        }
+
+        // Fallback to classification result
+        return {
+            action: classification.decision,
+            reason: `Based on error classification: ${classification.fixable.length} fixable, ${classification.unfixable.length} unfixable`,
+            confidence: 0.7
+        };
+    }, [classifyErrors]);
+
     return {
         analyzeRaccord,
         suggestNextShot,
-        validateRaccordWithVision
+        validateRaccordWithVision,
+        classifyErrors,
+        makeRetryDecision
     };
 }

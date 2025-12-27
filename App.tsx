@@ -149,7 +149,9 @@ const App: React.FC = () => {
     const {
         analyzeRaccord,
         suggestNextShot,
-        validateRaccordWithVision
+        validateRaccordWithVision,
+        classifyErrors,
+        makeRetryDecision
     } = useDOPLogic(state);
 
     const {
@@ -170,7 +172,8 @@ const App: React.FC = () => {
         isOutfitLockMode,
         addToGallery,
         isDOPEnabled,
-        validateRaccordWithVision
+        validateRaccordWithVision,
+        makeRetryDecision
     );
 
     const {

@@ -60,7 +60,8 @@ export function useImageGeneration(
     isOutfitLockMode?: boolean,
     addToGallery?: (image: string, type: string, prompt?: string, sourceId?: string) => void,
     isDOPEnabled?: boolean,
-    validateRaccordWithVision?: (currentImage: string, prevImage: string, currentScene: Scene, prevScene: Scene, apiKey: string) => Promise<{ isValid: boolean; errors: { type: string; description: string }[]; correctionPrompt?: string }>
+    validateRaccordWithVision?: (currentImage: string, prevImage: string, currentScene: Scene, prevScene: Scene, apiKey: string) => Promise<{ isValid: boolean; errors: { type: string; description: string }[]; correctionPrompt?: string }>,
+    makeRetryDecision?: (failedImage: string, referenceImage: string, originalPrompt: string, errors: { type: string; description: string }[], apiKey: string) => Promise<{ action: 'retry' | 'skip' | 'try_once'; reason: string; enhancedPrompt?: string; confidence: number }>
 ) {
     const [isBatchGenerating, setIsBatchGenerating] = useState(false);
     const [isStopping, setIsStopping] = useState(false);
@@ -619,7 +620,7 @@ export function useImageGeneration(
                     if (prevScene?.generatedImage) {
                         console.log('[DOP] Validating raccord between scenes...');
 
-                        const MAX_DOP_RETRIES = 2;
+                        let MAX_DOP_RETRIES = 2;
                         let retryCount = 0;
                         let lastValidation = await validateRaccordWithVision(
                             currentImage,
@@ -634,41 +635,86 @@ export function useImageGeneration(
                             e.type === 'character' || e.type === 'prop'
                         );
 
-                        while (!lastValidation.isValid && criticalErrors.length > 0 && retryCount < MAX_DOP_RETRIES) {
-                            console.log(`[DOP] RACCORD ERROR DETECTED (attempt ${retryCount + 1}/${MAX_DOP_RETRIES}):`, criticalErrors);
+                        // Use Decision Agent if available, otherwise use simple retry logic
+                        if (!lastValidation.isValid && criticalErrors.length > 0) {
+                            console.log(`[DOP] RACCORD ERROR DETECTED:`, criticalErrors);
 
-                            // Clear the bad image and regenerate with correction
-                            updateStateAndRecord(s => ({
-                                ...s,
-                                scenes: s.scenes.map(sc => sc.id === scene.id ? {
-                                    ...sc,
-                                    generatedImage: null,
-                                    error: `DOP Retry ${retryCount + 1}: ${criticalErrors.map(e => e.description).join('; ')}`
-                                } : sc)
-                            }));
+                            // Get original prompt for decision agent
+                            const originalPrompt = updatedScene?.contextDescription || '';
 
-                            // Wait a bit then regenerate with correction prompt
-                            await new Promise(r => setTimeout(r, 500));
+                            // Ask Decision Agent if we should retry
+                            let shouldRetry = true;
+                            let enhancedCorrection = lastValidation.correctionPrompt;
 
-                            console.log('[DOP] Auto-regenerating with correction:', lastValidation.correctionPrompt);
-                            await performImageGeneration(scene.id, lastValidation.correctionPrompt);
-
-                            // Re-validate
-                            const reUpdatedState = stateRef.current;
-                            const reUpdatedScene = reUpdatedState.scenes.find(s => s.id === scene.id);
-                            const newImage = reUpdatedScene?.generatedImage;
-
-                            if (newImage) {
-                                lastValidation = await validateRaccordWithVision(
-                                    newImage,
+                            if (makeRetryDecision && currentImage) {
+                                console.log('[DOP Agent] Analyzing if retry will succeed...');
+                                const decision = await makeRetryDecision(
+                                    currentImage,
                                     prevScene.generatedImage,
-                                    reUpdatedScene!,
-                                    prevScene,
+                                    originalPrompt,
+                                    criticalErrors,
                                     userApiKey
                                 );
+
+                                console.log('[DOP Agent] Decision:', decision);
+
+                                if (decision.action === 'skip') {
+                                    console.log('[DOP Agent] SKIP - errors are unfixable, saving credits');
+                                    shouldRetry = false;
+                                    updateStateAndRecord(s => ({
+                                        ...s,
+                                        scenes: s.scenes.map(sc => sc.id === scene.id ? {
+                                            ...sc,
+                                            error: `⚠️ DOP: ${decision.reason} (manual review needed)`
+                                        } : sc)
+                                    }));
+                                } else if (decision.action === 'try_once') {
+                                    MAX_DOP_RETRIES = 1; // Reduce retries for uncertain cases
+                                    if (decision.enhancedPrompt) {
+                                        enhancedCorrection = decision.enhancedPrompt;
+                                    }
+                                } else if (decision.enhancedPrompt) {
+                                    enhancedCorrection = decision.enhancedPrompt;
+                                }
                             }
 
-                            retryCount++;
+                            // Only retry if Decision Agent approves
+                            while (shouldRetry && !lastValidation.isValid && criticalErrors.length > 0 && retryCount < MAX_DOP_RETRIES) {
+                                console.log(`[DOP] Retrying with enhanced correction (attempt ${retryCount + 1}/${MAX_DOP_RETRIES})`);
+
+                                // Clear the bad image and regenerate with correction
+                                updateStateAndRecord(s => ({
+                                    ...s,
+                                    scenes: s.scenes.map(sc => sc.id === scene.id ? {
+                                        ...sc,
+                                        generatedImage: null,
+                                        error: `DOP Retry ${retryCount + 1}: ${criticalErrors.map(e => e.description).join('; ')}`
+                                    } : sc)
+                                }));
+
+                                // Wait a bit then regenerate with enhanced correction prompt
+                                await new Promise(r => setTimeout(r, 500));
+
+                                console.log('[DOP] Auto-regenerating with correction:', enhancedCorrection);
+                                await performImageGeneration(scene.id, enhancedCorrection);
+
+                                // Re-validate
+                                const reUpdatedState = stateRef.current;
+                                const reUpdatedScene = reUpdatedState.scenes.find(s => s.id === scene.id);
+                                const newImage = reUpdatedScene?.generatedImage;
+
+                                if (newImage) {
+                                    lastValidation = await validateRaccordWithVision(
+                                        newImage,
+                                        prevScene.generatedImage,
+                                        reUpdatedScene!,
+                                        prevScene,
+                                        userApiKey
+                                    );
+                                }
+
+                                retryCount++;
+                            }
                         }
 
                         if (retryCount >= MAX_DOP_RETRIES && !lastValidation.isValid) {
@@ -694,7 +740,7 @@ export function useImageGeneration(
             setIsBatchGenerating(false);
             setIsStopping(false);
         }
-    }, [state.scenes, performImageGeneration, isDOPEnabled, validateRaccordWithVision, userApiKey, stateRef, updateStateAndRecord]);
+    }, [state.scenes, performImageGeneration, isDOPEnabled, validateRaccordWithVision, makeRetryDecision, userApiKey, stateRef, updateStateAndRecord]);
 
     return {
         isBatchGenerating,
