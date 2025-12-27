@@ -209,8 +209,8 @@ John enters the room, wearing a tailored Armani suit..."
                                         </button>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {BUILT_IN_CHARACTER_STYLES.slice(0, 4).map(style => (
+                                    <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: '#52525b #27272a' }}>
+                                        {(showStylePicker ? BUILT_IN_CHARACTER_STYLES : BUILT_IN_CHARACTER_STYLES.slice(0, 4)).map(style => (
                                             <button
                                                 key={style.id}
                                                 onClick={() => setSelectedStyleId(style.id)}
