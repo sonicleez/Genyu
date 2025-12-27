@@ -36,6 +36,7 @@ interface StyleSettingsSectionProps {
     toggleContinuityMode: () => void;
     isOutfitLockMode: boolean;
     toggleOutfitLockMode: () => void;
+    onOpenManualScript?: () => void; // NEW: Open Manual Script Import modal
 }
 
 
@@ -72,7 +73,8 @@ export const StyleSettingsSection: React.FC<StyleSettingsSectionProps> = ({
     isContinuityMode,
     toggleContinuityMode,
     isOutfitLockMode,
-    toggleOutfitLockMode
+    toggleOutfitLockMode,
+    onOpenManualScript
 }) => {
 
     const handleStyleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -331,8 +333,11 @@ export const StyleSettingsSection: React.FC<StyleSettingsSectionProps> = ({
                         </button>
                     </div>
                     <div className="w-full relative">
-                        <button onClick={onTriggerFileUpload} className={`w-full px-6 py-2 font-semibold text-white rounded-lg bg-gray-700 hover:bg-gray-600 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-gray-700/20`}>
-                            Upload Excel
+                        <button
+                            onClick={onOpenManualScript || onTriggerFileUpload}
+                            className={`w-full px-6 py-2 font-semibold text-white rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-violet-700/20`}
+                        >
+                            📝 Manual Script
                         </button>
                     </div>
                 </div>

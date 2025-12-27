@@ -1,3 +1,6 @@
+// Re-export Character Style types for convenience
+export type { CharacterStyleDefinition, CharacterStyleCategory } from './constants/characterStyles';
+
 export interface CharacterProp {
   id: string;
   name: string; // Tên vật phẩm (ví dụ: "Kiếm", "Búa") để AI nhận diện trong prompt
@@ -108,6 +111,12 @@ export interface Scene {
   referenceImage?: string | null; // Base64 or URL
   referenceImageDescription?: string; // What to focus on in this reference (e.g. "Cái chảo")
 
+  // Manual Script Import - Voice Over (NEW)
+  voiceOverText?: string; // Original VO script text (READONLY after import)
+  isVOScene?: boolean; // True if this scene has voice-over attached
+  voSecondsEstimate?: number; // Estimated VO duration in seconds
+  referenceSceneId?: string; // For B-roll: ID of the VO scene this expands
+
   // UI state
   isGenerating: boolean;
   error: string | null;
@@ -212,6 +221,10 @@ export interface ProjectState {
   // Director System (NEW)
   activeDirectorId?: string;
   customDirectors?: DirectorPreset[];
+
+  // Character Style System (NEW - Extensible)
+  globalCharacterStyleId?: string; // ID of active style (e.g., 'faceless-mannequin')
+  customCharacterStyles?: CharacterStyleDefinition[]; // User-created styles
 
   characters: Character[];
   products: Product[]; // List of Products/Props

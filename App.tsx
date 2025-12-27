@@ -18,6 +18,7 @@ import { ScreenplayModal } from './components/modals/ScreenplayModal';
 import { AuthModal } from './components/modals/AuthModal';
 import { ProjectBrowserModal } from './components/modals/ProjectBrowserModal';
 import { UserProfileModal } from './components/modals/UserProfileModal';
+import { ManualScriptModal } from './components/modals/ManualScriptModal';
 import { ActivationScreen } from './components/ActivationScreen';
 import { AssetLibrary } from './components/sections/AssetLibrary';
 import { APP_NAME, PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from './constants/presets';
@@ -101,6 +102,7 @@ const App: React.FC = () => {
     const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
     const [isProjectBrowserOpen, setProjectBrowserOpen] = useState(false);
     const [isLibraryOpen, setLibraryOpen] = useState(false);
+    const [isManualScriptModalOpen, setManualScriptModalOpen] = useState(false);
     const [cloudProjects, setCloudProjects] = useState<any[]>([]);
 
     const mainContentRef = useRef<HTMLDivElement>(null);
@@ -737,6 +739,7 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                     onOpenScriptGenerator={() => setScriptModalOpen(true)}
                                     isScriptGenerating={isScriptGenerating}
                                     onTriggerFileUpload={triggerFileUpload}
+                                    onOpenManualScript={() => setManualScriptModalOpen(true)}
                                 />
 
                                 <ScenesMapSection
@@ -961,6 +964,42 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                         onLoad={handleLoadProject}
                         onDelete={handleDeleteProject}
                         loading={projectLoading}
+                    />
+
+                    <ManualScriptModal
+                        isOpen={isManualScriptModalOpen}
+                        onClose={() => setManualScriptModalOpen(false)}
+                        onImport={(scenes, groups, newChars, styleId, directorId) => {
+                            // Add scene groups
+                            updateStateAndRecord(s => ({
+                                ...s,
+                                sceneGroups: [...(s.sceneGroups || []), ...groups],
+                                scenes: [...s.scenes, ...scenes],
+                                globalCharacterStyleId: styleId || s.globalCharacterStyleId,
+                                activeDirectorId: directorId || s.activeDirectorId
+                            }));
+                            // Add new characters
+                            newChars.forEach(c => {
+                                addCharacter();
+                                // Update the last added character with the name/description
+                                setTimeout(() => {
+                                    updateStateAndRecord(s => {
+                                        const lastChar = s.characters[s.characters.length - 1];
+                                        if (lastChar) {
+                                            return {
+                                                ...s,
+                                                characters: s.characters.map(ch =>
+                                                    ch.id === lastChar.id ? { ...ch, name: c.name, description: c.description } : ch
+                                                )
+                                            };
+                                        }
+                                        return s;
+                                    });
+                                }, 100);
+                            });
+                        }}
+                        existingCharacters={state.characters}
+                        userApiKey={userApiKey}
                     />
 
                     <input
