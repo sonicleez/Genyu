@@ -145,7 +145,7 @@ ${scriptText}
 TASK:
 1. Identify CHAPTER HEADERS (time periods, locations)
 2. Extract KEY CHARACTERS
-3. Break into SCENES (3-5s each)
+3. Break into SCENES based on VISUAL BEATS (5-10s+). Do NOT fragment continuous actions.
 4. Create VISUAL PROMPTS
 
 ===== CHARACTER DETECTION RULES =====
@@ -170,7 +170,7 @@ TASK:
 ${contextInstructions}
 
 SCENE RULES:
-- Each scene should have voice-over text (~3-4s)
+- Scenes should follow natural narrative beats (5-10s). Avoid splitting single sentences.
 - If a VO segment needs multiple visuals, mark needsExpansion: true
 - Expansion scenes are B-roll
 - CONSISTENCY CHECK: Same character must not be listed twice under different names.
