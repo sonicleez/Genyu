@@ -407,15 +407,13 @@ export function useImageGeneration(
                             const refLabel = `PARENT_SCENE_ANCHOR`;
                             // CRITICAL: Use parent scene as the RIGID template for this sub-scene
                             parts.push({
-                                text: `[${refLabel}]: !!! MANDATORY CINEMATIC FLOW & ACTION CONTINUITY !!!
-                            1. 3D SPATIAL LOCK: Assume this is the EXACT SAME 3D SET/ROOM as the anchor image.
-                            2. MICRO-PROGRESSION: This shot takes place 1-2 seconds AFTER the anchor. The character is ALIVE, not a statue.
-                            3. ACTION EVOLUTION: The character MUST CONTINUE the action from the anchor. Allow pose and gestures to naturally evolve (e.g. hand moves, head turns, expression shifts slightly) to show temporal progression.
-                            4. FIXED GEOMETRY: Do NOT change the room layout, furniture position, or background details.
-                            5. PROP CONSTANCY: Do NOT add or remove objects that are not present in the anchor.
-                            6. CHARACTER CONTINUITY: The character is the EXACT SAME ENTITY. 
-                               - VISUAL LOCK: Analyze the anchor image's skin texture and material (e.g. plastic, clay, skin). REPLICATE IT 100%.
-                               - FACELESS RULE: If the anchor shows a faceless/mannequin figure, the sub-scene MUST be faceless. Do NOT add mask details, eyes, or mouth.
+                                text: `[${refLabel}]: !!! MANDATORY CINEMATIC CONTINUITY !!!
+                            1. 3D SPATIAL LOCK: Assume this is the EXACT SAME 3D SET as the anchor.
+                            2. LIGHTING COPY: You MUST use the EXACT SAME lighting setup (Color temperature, Shadow direction, Intensity). Do NOT change the mood (e.g. if Anchor is Warm, Sub-scene MUST be Warm).
+                            3. BACKGROUND LOCK: The walls, furniture, and floor texture must match the anchor 100%. Do NOT hallucinate new wallpaper or decor.
+                            4. MICRO-PROGRESSION: This shot takes place 1-2 seconds AFTER the anchor. The character is ALIVE (can move hands/head), but the WORLD is FROZEN.
+                            5. FIXED GEOMETRY: Do NOT change the room layout.
+                            6. CHARACTER CONSISTENCY: Same Suit, Same Tie, Same Mannequin Material.
                             7. REJECT BIAS: The Anchor Image is the ONLY source of truth.` });
                             parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
                             continuityInstruction += `(PARENT SCENE LOCK - DYNAMIC MATERIAL MATCH) `;
