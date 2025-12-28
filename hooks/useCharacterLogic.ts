@@ -240,7 +240,13 @@ Return JSON:
 
             let json = { name: "", description: "", art_style: "", is_illustration: false };
             try {
-                const text = (analysisRes as any).text();
+                // Handle response text extraction safely
+                const text = (analysisRes as any).text ||
+                    (analysisRes.candidates?.[0]?.content?.parts?.[0]?.text) ||
+                    '';
+
+                if (!text) throw new Error("Empty response text");
+
                 json = JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
             } catch (e) {
                 console.error("JSON parse error", e);
