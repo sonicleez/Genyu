@@ -132,16 +132,28 @@ ${scriptText}
 
 TASK:
 1. Identify CHAPTER HEADERS
-2. Extract CHARACTER NAMES (Merge aliases: e.g. "The Man" = "Étienne"). List UNIQUE physical characters only.
+2. Extract CHARACTER NAMES - EXTRACT **ALL** CHARACTERS, including:
+   - Main protagonists
+   - Supporting characters (police, dealers, guards, etc.)
+   - Historical figures mentioned by name
+   - Minor roles who contribute to scenes (even with 1 mention)
 3. Break into SCENES (3-5s each)
 4. Create VISUAL PROMPTS
 
-RULES:
+CHARACTER RULES (CRITICAL - FOLLOW EXACTLY):
+- List EVERY named person or role that appears visually in any scene
+- MERGE ALIASES: If "The man" and "Étienne" refer to the same person, use "Étienne Marchand" only
+- MERGE TITLES: "Plainclothes officers" and "Monegasque police" = use "Monegasque Police Officers"
+- Include roles like: croupier, dealer, security guard, waitress, etc.
+- For groups (e.g., "two officers"), use plural: "Monegasque Police Officers"
+- Set isMain: true ONLY for protagonist(s), false for all others
+- DO NOT skip minor characters - they are needed for visual consistency
+
+SCENE RULES:
 - Each scene should have voice-over text (~3-4s)${contextInstructions}
 - If a VO segment needs multiple visuals, mark needsExpansion: true
 - Expansion scenes are B-roll
-- Identify Key Characters and supporting roles.
-- CONSTISTENCY CHECK: Ensure the same character is not listed twice under different names. Only list characters that appear visually.
+- CONSISTENCY CHECK: Ensure the same character is not listed twice under different names.
 
 RESPOND WITH JSON ONLY:
 {
