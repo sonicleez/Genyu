@@ -135,7 +135,7 @@ export function useScriptAnalysis(userApiKey: string | null) {
                 contextInstructions += `\n[USER DOP NOTES - MANDATORY CAMERA/LIGHTING CONTEXT]:\n${researchNotes.dop}\n- Apply these cinematography guidelines to visual prompts.\n`;
             }
 
-            const prompt = `You are a Cinematic Script Analyst and Production Consultant. Analyze this voice-over script using the Agency-over-Presence methodology. Return JSON only.
+            const prompt = `You are a Cinematic Script Analyst and Production Consultant. Analyze this voice-over script. Return JSON only.
 
 SCRIPT:
 """
@@ -143,32 +143,29 @@ ${scriptText}
 """
 
 TASK:
-1. Identify CHAPTER HEADERS
-2. Extract KEY CHARACTERS using Agency-over-Presence methodology (see below)
+1. Identify CHAPTER HEADERS (time periods, locations)
+2. Extract KEY CHARACTERS
 3. Break into SCENES (3-5s each)
 4. Create VISUAL PROMPTS
 
-===== CHARACTER DETECTION: AGENCY-OVER-PRESENCE METHODOLOGY =====
+===== CHARACTER DETECTION RULES =====
 
-Evaluate characters using 3 indices (internal analysis only, for filtering):
-- **Agency Score (1-10):** Ability to make decisions that change the story direction
-- **Conflict Weight (1-10):** Direct participation in or creation of core conflicts
-- **Thematic Relevance:** Does the character represent the main theme?
+**Who to INCLUDE:**
+- Characters that appear in 2 OR MORE scenes
+- Characters directly related to the protagonist (family, partners, friends, enemies)
+- Characters that drive the plot forward (even if only 1 appearance)
+- Historical/Ghost characters mentioned as important (e.g., deceased family members)
 
-**Filtering Process (Internal):**
-1. Extract all named entities from script
-2. For each entity, ask: "If this character is removed, does the story collapse?"
-3. Apply Dramatica archetypes: Protagonist, Antagonist, Guardian, Sidekick, Ghost
-4. Identify "Ghosts" - dead/absent characters who influence living ones (e.g., deceased twin brother)
-5. SKIP functional characters (waiters, guards, crowd) unless they change a story beat
+**Who to SKIP:**
+- Functional one-time roles: croupier, waiter, random guard, taxi driver
+- Unnamed crowds or bystanders
+- Characters mentioned only in passing with no visual presence
 
 **CHARACTER OUTPUT RULES:**
-- ONLY include characters with Agency Score ≥ 6 OR Conflict Weight ≥ 6 OR high Thematic Relevance
-- Include "Ghost" characters (deceased but influence story) marked in name: "David Marchand (Ghost)"
-- If character uses alias/mask identity, report TRUE IDENTITY with note: "Étienne Marchand (as David)"
 - MERGE aliases: "The man" = "Étienne" → use "Étienne Marchand" only
-- Set isMain: true for Protagonist and Antagonist archetypes
-- STRICT: Never list functional characters (croupier, random guard, waiter) unless they cause plot pivot
+- For ghost/deceased characters, mark in name: "David Marchand (Ghost)"
+- Set isMain: true for protagonist and antagonist
+- Set "mentions" to actual appearance count in script
 - MANDATORY STYLE: ALL characters' suggestedDescription MUST start with "Faceless white mannequin head. WEARING: ..." followed by detailed costume
 ${contextInstructions}
 
@@ -217,8 +214,6 @@ RESPOND WITH JSON ONLY:
   "characters": [
     {
       "name": "Étienne Marchand",
-      "archetype": "Protagonist",
-      "agencyScore": 9,
       "mentions": 15,
       "suggestedDescription": "Faceless white mannequin head. WEARING: A tailored charcoal grey suit with wide lapels, crisp white shirt, silk tie. (Micro-texture: Fabric has visible weave).",
       "outfitByChapter": {
@@ -229,8 +224,6 @@ RESPOND WITH JSON ONLY:
     },
     {
       "name": "David Marchand (Ghost)",
-      "archetype": "Ghost",
-      "agencyScore": 0,
       "mentions": 3,
       "suggestedDescription": "Faceless white mannequin head. WEARING: 1990s hockey jersey with team logo. (Only appears in flashbacks/photos)",
       "outfitByChapter": {},
