@@ -407,13 +407,15 @@ export function useImageGeneration(
                             const refLabel = `PARENT_SCENE_ANCHOR`;
                             // CRITICAL: Use parent scene as the RIGID template for this sub-scene
                             parts.push({
-                                text: `[${refLabel}]: !!! MANDATORY SEQUENCE CONTINUITY !!! This sub-scene is a CONTINUATION of this exact moment. 
-                            1. LINK VISUALS: Match environment, lighting, and color grading 100%.
-                            2. LINK CHARACTERS: The character in the sub-scene IS THE EXACT SAME ENTITY as in this anchor image.
-                            3. VISUAL PROPERTIES LOCK: Analyze the subject in the anchor image (skin texture, hair material, clothing fabric). REPLICATE these physical properties EXACTLY. 
-                               - If the subject has non-human skin (e.g., plastic, clay, metal), the sub-scene MUST match that material.
-                               - If the subject is human, match the skin tone and texture details.
-                            4. REJECT BIAS: Do not revert to "default" or "generic" representations. The Anchor Image is the ONLY source of truth for the character's physical reality.` });
+                                text: `[${refLabel}]: !!! MANDATORY CAMERA MOVEMENT IN FROZEN SPACE !!!
+                            1. 3D SPATIAL LOCK: Assume this is the EXACT SAME 3D SET/ROOM as the anchor image. The world is frozen in time. You are ONLY moving the camera to a new angle.
+                            2. FIXED GEOMETRY: Do NOT change the room layout, furniture position, or background details.
+                            3. PROP CONSTANCY: Do NOT add or remove objects (e.g. candles, papers, glasses) that are not present in the anchor.
+                            4. CHARACTER CONTINUITY: The character is the EXACT SAME ENTITY. 
+                               - ACTION LINK: If they are performing an action in the anchor, this sub-scene shows the SAME action from a new angle.
+                               - VISUAL LOCK: Analyze the anchor image's skin texture and material (e.g. plastic, clay, skin). REPLICATE IT 100%.
+                               - FACELESS RULE: If the anchor shows a faceless/mannequin figure, the sub-scene MUST be faceless. Do NOT add mask details, eyes, or mouth.
+                            5. REJECT BIAS: The Anchor Image is the ONLY source of truth. Ignore general knowledge if it conflicts with the anchor.` });
                             parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
                             continuityInstruction += `(PARENT SCENE LOCK - DYNAMIC MATERIAL MATCH) `;
                             console.log('[ImageGen] 🔗 Parent Scene Anchor injected for sub-scene', sceneToUpdate.sceneNumber);

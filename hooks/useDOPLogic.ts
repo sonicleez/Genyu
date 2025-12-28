@@ -227,10 +227,10 @@ SCENE CONTEXT:
 ${sameLocation ? 'SAME LOCATION: Background must be strictly consistent.' : 'DIFFERENT LOCATION: Transition allowed.'}
 
 CHECK FOR:
-1. PROP CONTINUITY: Are props that should appear actually visible? Check position consistency (same hand, same table position).
-2. CHARACTER IDENTITY: Do faces match between shots? Same costume?
+1. PROP CONTINUITY: Check for objects appearing/disappearing. NOTE: Ignore visibility changes caused by camera angle shifts (e.g. close-up hiding table objects). Focus on "Impossible" changes (e.g. object changing color/shape).
+2. CHARACTER CONTINUITY: Do faces/materials match? (e.g. Faceless mannequin MUST NOT become a human or wear a mask with features).
 3. LIGHTING: Is the lighting direction and color temperature consistent?
-4. SPATIAL: Are background elements consistent (furniture, walls, etc.)?
+4. SPATIAL: Are background elements consistent (furniture, walls)? (Acknowledge perspective shifts).
 
 RESPOND IN JSON ONLY:
 {
