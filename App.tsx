@@ -1061,6 +1061,20 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                 characters: [...s.characters, ...createdCharacters],
                                 researchNotes: researchNotes || s.researchNotes  // NEW: Save research notes
                             }));
+
+                            // 6. Show success notification to user
+                            setTimeout(() => {
+                                const message = [
+                                    `✅ Import thành công!`,
+                                    ``,
+                                    `📺 ${updatedScenes.length} scenes đã tạo`,
+                                    createdCharacters.length > 0 ? `👤 ${createdCharacters.length} nhân vật mới` : null,
+                                    updatedGroups.length > 0 ? `📁 ${updatedGroups.length} groups/chapters` : null,
+                                    researchNotes?.director || researchNotes?.dop ? `📚 Research Notes đã lưu` : null
+                                ].filter(Boolean).join('\n');
+
+                                alert(message);
+                            }, 100);
                         }}
                         existingCharacters={state.characters}
                         userApiKey={userApiKey}
