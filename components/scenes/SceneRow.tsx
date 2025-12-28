@@ -88,9 +88,31 @@ export const SceneRow: React.FC<SceneRowProps> = ({
             onDragStart={() => onDragStart(index)}
             onDragOver={(e) => { e.preventDefault(); onDragOver(index); }}
             onDrop={() => onDrop(index)}
-            className={`grid md:grid-cols-12 gap-4 items-start bg-gray-800/30 p-4 rounded-lg border transition-all group/row relative overflow-visible ${index === (window as any).dragOverIndex ? 'border-brand-orange bg-brand-orange/10 scale-[1.01] shadow-2xl z-10' : 'border-gray-700 hover:border-gray-500'
-                }`}
+            className={`grid md:grid-cols-12 gap-4 items-start p-4 rounded-lg border transition-all group/row relative overflow-visible ${
+                // Sub-scene styling (has parentSceneId)
+                scene.parentSceneId
+                    ? 'bg-amber-900/10 border-amber-500/30 ml-6'
+                    // Main expanded scene styling
+                    : scene.isExpandedSequence
+                        ? 'bg-emerald-900/10 border-emerald-500/40'
+                        // Normal scene styling
+                        : 'bg-gray-800/30 border-gray-700 hover:border-gray-500'
+                } ${index === (window as any).dragOverIndex ? 'border-brand-orange bg-brand-orange/10 scale-[1.01] shadow-2xl z-10' : ''}`}
         >
+            {/* Main/Sub Scene Label Badge */}
+            {scene.isExpandedSequence && !scene.parentSceneId && (
+                <div className="absolute -top-2 left-4 px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-bold uppercase tracking-wider rounded-full">
+                    📺 MAIN
+                </div>
+            )}
+            {scene.parentSceneId && (
+                <div className="absolute -top-2 left-4 px-2 py-0.5 bg-amber-500 text-black text-[8px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1">
+                    🎬 SUB {(scene.sequenceIndex ?? 0) + 1}
+                    {scene.emotionalBeat && (
+                        <span className="text-amber-900">• {scene.emotionalBeat}</span>
+                    )}
+                </div>
+            )}
             {/* Drag Handle */}
             <div className="absolute -left-8 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing text-gray-600 hover:text-brand-orange opacity-0 group-hover/row:opacity-100 transition-all p-2">
                 <GripVertical size={20} />
