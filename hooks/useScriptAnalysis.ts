@@ -149,7 +149,10 @@ TASK:
    - ACTION SEQUENCE: If the text describes multiple distinct actions (e.g. "He stands. He places a chip. Sample spins."), you MUST split them into separate scenes.
    - STATIC DESCRIPTION: If the text describes a single moment/environment (e.g. "The room was dark. Shadows were long."), keep it as ONE scene.
    - PREFERENCE: Better to have more scenes for Action Sequences than to miss a beat.
-4. Create VISUAL PROMPTS
+4. Create VISUAL PROMPTS that match the VO context:
+   - IF VO says "stands at edge", Prompt MUST be WIDE/MEDIUM SHOT. Do NOT use Extreme Close-up.
+   - IF VO mentions specific details (chips, ball), include them, but DO NOT hallucinate unrelated micro-details (e.g. "brass frets") unless relevant.
+   - LOGIC: The Visual Prompt must be the LITERAL translation of the VO action.
 
 ===== CHARACTER DETECTION RULES =====
 
