@@ -37,6 +37,7 @@ export interface SceneAnalysis {
     voiceOverText: string;
     visualPrompt: string;
     chapterId: string;
+    locationId: string; // Location/setting within chapter (e.g., "casino_interior", "lobby")
     characterNames: string[];
     estimatedDuration: number;
     needsExpansion: boolean; // If VO is long and needs multiple visual scenes
@@ -46,10 +47,21 @@ export interface SceneAnalysis {
     }[];
 }
 
+export interface LocationAnalysis {
+    id: string;
+    chapterId: string;
+    name: string;
+    description: string;
+    suggestedTimeOfDay?: string;
+    suggestedWeather?: string;
+    lightingMood?: string;
+}
+
 export interface ScriptAnalysisResult {
     totalWords: number;
     estimatedDuration: number; // total seconds
     chapters: ChapterAnalysis[];
+    locations: LocationAnalysis[]; // Locations/settings within chapters
     characters: CharacterAnalysis[];
     suggestedSceneCount: number;
     scenes: SceneAnalysis[];
@@ -165,14 +177,40 @@ SCENE RULES:
 - Expansion scenes are B-roll
 - CONSISTENCY CHECK: Same character must not be listed twice under different names.
 
+LOCATION DETECTION RULES:
+- Identify DISTINCT physical locations/settings within each chapter
+- Create a "locations" array with unique location IDs (e.g., "casino_interior", "lobby", "outside_taxi")
+- Assign "locationId" to each scene based on where the action takes place
+- Different rooms, buildings, or outdoor areas = different locations
+- Time jumps to flashbacks = different location (e.g., "quebec_library_1977")
+
 RESPOND WITH JSON ONLY:
 {
   "chapters": [
     {
       "id": "chapter_1",
-      "title": "Chapter Title",
+      "title": "Monte Carlo, March 2019",
       "suggestedTimeOfDay": "night",
       "suggestedWeather": "clear"
+    }
+  ],
+  "locations": [
+    {
+      "id": "casino_interior",
+      "chapterId": "chapter_1",
+      "name": "Casino de Monte-Carlo Interior",
+      "description": "Opulent casino floor with roulette tables, chandeliers, and high ceilings",
+      "suggestedTimeOfDay": "night",
+      "suggestedWeather": "clear",
+      "lightingMood": "warm golden casino lights"
+    },
+    {
+      "id": "lobby_coat_check",
+      "chapterId": "chapter_1",
+      "name": "Casino Lobby",
+      "description": "Elegant lobby area with coat check counter and marble floors",
+      "suggestedTimeOfDay": "night",
+      "lightingMood": "soft ambient lighting"
     }
   ],
   "characters": [
@@ -203,19 +241,17 @@ RESPOND WITH JSON ONLY:
       "voiceOverText": "Exact text from script...",
       "visualPrompt": "WIDE SHOT. Casino interior, roulette table, elegant chandelier...",
       "chapterId": "chapter_1",
-      "characterNames": ["Character Name"],
+      "locationId": "casino_interior",
+      "characterNames": ["Étienne Marchand"],
       "needsExpansion": false
     },
     {
-      "voiceOverText": "Longer text that needs multiple visuals...",
-      "visualPrompt": "First visual - establishing shot",
+      "voiceOverText": "Two plainclothes officers intercept him...",
+      "visualPrompt": "MEDIUM SHOT. Casino lobby, coat check area...",
       "chapterId": "chapter_1",
-      "characterNames": [],
-      "needsExpansion": true,
-      "expansionScenes": [
-        { "visualPrompt": "B-roll: Close-up of chips", "isBRoll": true },
-        { "visualPrompt": "B-roll: Wheel spinning", "isBRoll": true }
-      ]
+      "locationId": "lobby_coat_check",
+      "characterNames": ["Étienne Marchand"],
+      "needsExpansion": false
     }
   ]
 }`;
@@ -248,6 +284,7 @@ RESPOND WITH JSON ONLY:
                     endIndex: 0,
                     estimatedDuration: Math.ceil(estimatedTotalDuration / parsed.chapters.length)
                 })),
+                locations: parsed.locations || [], // Locations within chapters
                 characters: parsed.characters || [],
                 suggestedSceneCount: parsed.scenes.length +
                     parsed.scenes.reduce((sum: number, s: any) => sum + (s.expansionScenes?.length || 0), 0),
@@ -280,26 +317,41 @@ RESPOND WITH JSON ONLY:
         existingCharacters: Character[] = []
     ): { scenes: Scene[]; groups: SceneGroup[]; newCharacters: { name: string; description: string }[]; sceneCharacterMap: Record<number, string[]> } => {
 
-        const groups: SceneGroup[] = analysis.chapters.map(ch => {
+        // Create groups from LOCATIONS (not chapters) for proper environment lock
+        // Each location within a chapter gets its own group for consistent backgrounds
+        const groups: SceneGroup[] = (analysis.locations || []).map(loc => {
             const outfitOverrides: Record<string, string> = {};
-            // Map character name -> outfit for this chapter
+            // Map character name -> outfit for this location's chapter
             analysis.characters.forEach(c => {
-                // Ensure case-insensitive or exact name match? 
-                // We will use the exact name here and rely on App.tsx to resolve IDs
-                if (c.outfitByChapter?.[ch.id]) {
-                    outfitOverrides[c.name] = c.outfitByChapter[ch.id];
+                if (c.outfitByChapter?.[loc.chapterId]) {
+                    outfitOverrides[c.name] = c.outfitByChapter[loc.chapterId];
                 }
             });
 
             return {
-                id: ch.id,
-                name: ch.title,
-                description: ch.title,
-                timeOfDay: (ch.suggestedTimeOfDay as any) || 'day',
-                weather: (ch.suggestedWeather as any) || 'clear',
+                id: loc.id, // Location ID as group ID
+                name: loc.name,
+                description: loc.description,
+                timeOfDay: (loc.suggestedTimeOfDay as any) || 'day',
+                weather: (loc.suggestedWeather as any) || 'clear',
+                lightingMood: loc.lightingMood,
                 outfitOverrides
             };
         });
+
+        // Fallback: if no locations detected, use chapters as groups (backward compatibility)
+        if (groups.length === 0) {
+            analysis.chapters.forEach(ch => {
+                groups.push({
+                    id: ch.id,
+                    name: ch.title,
+                    description: ch.title,
+                    timeOfDay: (ch.suggestedTimeOfDay as any) || 'day',
+                    weather: (ch.suggestedWeather as any) || 'clear',
+                    outfitOverrides: {}
+                });
+            });
+        }
 
         const scenes: Scene[] = [];
         let sceneNumber = 1;
@@ -316,7 +368,8 @@ RESPOND WITH JSON ONLY:
             const mainScene: Scene = {
                 id: `scene_${sceneNumber}`,
                 sceneNumber: String(sceneNumber),
-                groupId: sceneAnalysis.chapterId,
+                chapterId: sceneAnalysis.chapterId, // Chapter = story segment
+                groupId: sceneAnalysis.locationId || sceneAnalysis.chapterId, // Group = location (fallback to chapter)
                 language1: '',
                 vietnamese: '',
                 promptName: `Scene ${sceneNumber}`,
@@ -353,7 +406,8 @@ RESPOND WITH JSON ONLY:
                     const bRollScene: Scene = {
                         id: `scene_${sceneNumber}`,
                         sceneNumber: String(sceneNumber),
-                        groupId: sceneAnalysis.chapterId,
+                        chapterId: sceneAnalysis.chapterId, // Same chapter as main scene
+                        groupId: sceneAnalysis.locationId || sceneAnalysis.chapterId, // Same location as main scene
                         language1: '',
                         vietnamese: '',
                         promptName: `B-Roll ${sceneNumber}`,

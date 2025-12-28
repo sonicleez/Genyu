@@ -87,7 +87,8 @@ export interface SceneGroup {
 export interface Scene {
   id: string;
   sceneNumber: string;
-  groupId?: string; // ID of the SceneGroup this scene belongs to
+  chapterId?: string; // ID of the Chapter this scene belongs to (story segment)
+  groupId?: string; // ID of the SceneGroup (location/setting within chapter)
 
   // Legacy fields (backward compatibility)
   language1: string;
