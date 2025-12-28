@@ -323,7 +323,7 @@ TECHNICAL REQUIREMENTS:
             console.error("Analyze and Generate Failed", error);
             updateCharacter(id, { isAnalyzing: false });
         }
-    }, [userApiKey, updateCharacter, setApiKeyModalOpen, userId, state.imageModel]);
+    }, [userApiKey, updateCharacter, setApiKeyModalOpen, userId, state.imageModel, state.characters]);
 
     const generateCharacterSheets = useCallback(async (id: string) => {
         const char = state.characters.find(c => c.id === id);
