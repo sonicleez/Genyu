@@ -407,15 +407,16 @@ export function useImageGeneration(
                             const refLabel = `PARENT_SCENE_ANCHOR`;
                             // CRITICAL: Use parent scene as the RIGID template for this sub-scene
                             parts.push({
-                                text: `[${refLabel}]: !!! MANDATORY CAMERA MOVEMENT IN FROZEN SPACE !!!
-                            1. 3D SPATIAL LOCK: Assume this is the EXACT SAME 3D SET/ROOM as the anchor image. The world is frozen in time. You are ONLY moving the camera to a new angle.
-                            2. FIXED GEOMETRY: Do NOT change the room layout, furniture position, or background details.
-                            3. PROP CONSTANCY: Do NOT add or remove objects (e.g. candles, papers, glasses) that are not present in the anchor.
-                            4. CHARACTER CONTINUITY: The character is the EXACT SAME ENTITY. 
-                               - ACTION LINK: If they are performing an action in the anchor, this sub-scene shows the SAME action from a new angle.
+                                text: `[${refLabel}]: !!! MANDATORY CINEMATIC FLOW & ACTION CONTINUITY !!!
+                            1. 3D SPATIAL LOCK: Assume this is the EXACT SAME 3D SET/ROOM as the anchor image.
+                            2. MICRO-PROGRESSION: This shot takes place 1-2 seconds AFTER the anchor. The character is ALIVE, not a statue.
+                            3. ACTION EVOLUTION: The character MUST CONTINUE the action from the anchor. Allow pose and gestures to naturally evolve (e.g. hand moves, head turns, expression shifts slightly) to show temporal progression.
+                            4. FIXED GEOMETRY: Do NOT change the room layout, furniture position, or background details.
+                            5. PROP CONSTANCY: Do NOT add or remove objects that are not present in the anchor.
+                            6. CHARACTER CONTINUITY: The character is the EXACT SAME ENTITY. 
                                - VISUAL LOCK: Analyze the anchor image's skin texture and material (e.g. plastic, clay, skin). REPLICATE IT 100%.
                                - FACELESS RULE: If the anchor shows a faceless/mannequin figure, the sub-scene MUST be faceless. Do NOT add mask details, eyes, or mouth.
-                            5. REJECT BIAS: The Anchor Image is the ONLY source of truth. Ignore general knowledge if it conflicts with the anchor.` });
+                            7. REJECT BIAS: The Anchor Image is the ONLY source of truth.` });
                             parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
                             continuityInstruction += `(PARENT SCENE LOCK - DYNAMIC MATERIAL MATCH) `;
                             console.log('[ImageGen] 🔗 Parent Scene Anchor injected for sub-scene', sceneToUpdate.sceneNumber);
