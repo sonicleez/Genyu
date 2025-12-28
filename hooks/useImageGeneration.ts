@@ -162,12 +162,8 @@ export function useImageGeneration(
 
             const cinematographyPrompt = [cameraPrompt, lensPrompt, anglePrompt].filter(Boolean).join(', ');
 
-            // --- MASTER LOCATION INJECTION ---
-            const masterLocation = currentState.locations?.find(l => l.id === sceneToUpdate.locationId);
-            const locationPrefix = masterLocation?.description ? `[MASTER LOCATION: ${masterLocation.description}] ` : '';
-
             // Clean context from AI meta-instructions - broader regex
-            let cleanedContext = locationPrefix + (sceneToUpdate.contextDescription || '')
+            let cleanedContext = (sceneToUpdate.contextDescription || '')
                 .replace(/Referencing environment from.*?(consistency|logic|group|refgroup|nhất quán)\.?/gi, '')
                 .replace(/Tham chiếu bối cảnh từ.*?(nhất quán|consistency)\.?/gi, '')
                 .trim();

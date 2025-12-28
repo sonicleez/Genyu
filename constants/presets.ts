@@ -306,7 +306,6 @@ export const INITIAL_STATE: ProjectState = {
         isDefault: false,
         isAnalyzing: false,
     })),
-    locations: [],
     products: [
         {
             id: generateId(),

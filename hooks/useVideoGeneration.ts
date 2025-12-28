@@ -2,7 +2,6 @@ import { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { ProjectState } from '../types';
 import { CAMERA_ANGLES, LENS_OPTIONS, VEO_PRESETS } from '../constants/presets';
-import { CAMERA_MOVEMENTS } from '../constants/cinematography';
 import { Scene } from '../types';
 
 export function useVideoGeneration(
@@ -58,10 +57,7 @@ export function useVideoGeneration(
             }
 
             const scriptText = state.scriptLanguage === 'vietnamese' ? scene.vietnamese : scene.language1;
-
-            const masterLocation = state.locations?.find(l => l.id === scene.locationId);
-            const locationDesc = masterLocation?.description ? `[MASTER SETTING: ${masterLocation.description}] ` : '';
-            const context = locationDesc + (scene.contextDescription || '');
+            const context = scene.contextDescription || '';
             const promptName = scene.promptName || '';
             const sceneProducts = (state.products || []).filter(p => (scene.productIds || []).includes(p.id));
             const productContext = sceneProducts.map(p => `Product: ${p.name} (${p.description})`).join('; ');
@@ -86,7 +82,6 @@ You are generating a prompt to ANIMATE the provided keyframe image. The image is
 - Dialogue/Script: "${scriptText}"
 - Products visible: "${productContext}"
 - Camera Angle: "${scene.cameraAngleOverride === 'custom' ? scene.customCameraAngle : (CAMERA_ANGLES.find(a => a.value === scene.cameraAngleOverride)?.label || 'Auto')}"
-- Camera Movement: "${scene.cameraMovement ? (CAMERA_MOVEMENTS.find(m => m.value === scene.cameraMovement)?.label || scene.cameraMovement) : 'Auto/Steady'}"
 - Lens Style: "${scene.lensOverride === 'custom' ? scene.customLensOverride : (LENS_OPTIONS.find(l => l.value === scene.lensOverride)?.label || 'Auto')}"
 
 **PRESET MODE: ${selectedPreset.label}**

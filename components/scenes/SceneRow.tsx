@@ -1,9 +1,8 @@
 import React, { useRef, useState } from 'react';
-import { GripVertical, Copy, Download, Layers, Play, Plus, RefreshCw, Trash, User, Box, Sparkles, Wand2, MapPin, Image as ImageIcon } from 'lucide-react';
-import { Scene, Character, Product, Location } from '../../types';
+import { GripVertical, Copy, Download, Layers, Play, Plus, RefreshCw, Trash, User, Box, Sparkles, Wand2, Image as ImageIcon } from 'lucide-react';
+import { Scene, Character, Product } from '../../types';
 import { ExpandableTextarea } from '../common/ExpandableTextarea';
 import { CAMERA_ANGLES, LENS_OPTIONS, TRANSITION_TYPES, VEO_MODES, VEO_PRESETS } from '../../constants/presets';
-import { CAMERA_MOVEMENTS, CAMERA_SPEEDS } from '../../constants/cinematography';
 
 // Preset angles for Insert Angles feature
 const INSERT_ANGLE_OPTIONS = [
@@ -24,7 +23,6 @@ export interface SceneRowProps {
     index: number;
     characters: Character[];
     products: Product[];
-    locations: Location[];
     sceneGroups: any[];
     updateScene: (id: string, updates: Partial<Scene>) => void;
     assignSceneToGroup: (sceneId: string, groupId: string | undefined) => void;
@@ -41,7 +39,7 @@ export interface SceneRowProps {
 }
 
 export const SceneRow: React.FC<SceneRowProps> = ({
-    scene, scenes, index, characters, products, locations, sceneGroups, updateScene, assignSceneToGroup, removeScene,
+    scene, scenes, index, characters, products, sceneGroups, updateScene, assignSceneToGroup, removeScene,
     generateImage, generateEndFrame, openImageViewer,
     onDragStart, onDragOver, onDrop,
     generateVeoPrompt,
@@ -88,8 +86,8 @@ export const SceneRow: React.FC<SceneRowProps> = ({
             onDragStart={() => onDragStart(index)}
             onDragOver={(e) => { e.preventDefault(); onDragOver(index); }}
             onDrop={() => onDrop(index)}
-            className={`grid md: grid - cols - 12 gap - 4 items - start bg - gray - 800 / 30 p - 4 rounded - lg border transition - all group / row relative overflow - visible ${index === (window as any).dragOverIndex ? 'border-brand-orange bg-brand-orange/10 scale-[1.01] shadow-2xl z-10' : 'border-gray-700 hover:border-gray-500'
-                } `}
+            className={`grid md:grid-cols-12 gap-4 items-start bg-gray-800/30 p-4 rounded-lg border transition-all group/row relative overflow-visible ${index === (window as any).dragOverIndex ? 'border-brand-orange bg-brand-orange/10 scale-[1.01] shadow-2xl z-10' : 'border-gray-700 hover:border-gray-500'
+                }`}
         >
             {/* Drag Handle */}
             <div className="absolute -left-8 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing text-gray-600 hover:text-brand-orange opacity-0 group-hover/row:opacity-100 transition-all p-2">
@@ -154,26 +152,6 @@ export const SceneRow: React.FC<SceneRowProps> = ({
 
             {/* Context + Cinematography */}
             <div className="md:col-span-2 space-y-2">
-                {/* Location Selector */}
-                <div className="bg-gray-900/30 p-1.5 rounded border border-gray-700/50">
-                    <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-1">
-                            <MapPin size={10} className="text-orange-500" />
-                            <span className="text-[9px] uppercase font-bold text-gray-500">Master Location</span>
-                        </div>
-                    </div>
-                    <select
-                        value={scene.locationId || ''}
-                        onChange={(e) => updateScene(scene.id, { locationId: e.target.value || undefined })}
-                        className="w-full bg-gray-800 border border-gray-600 rounded p-1.5 text-[10px] text-orange-200 focus:border-orange-500 font-medium"
-                    >
-                        <option value="">-- Tự do (No Master) --</option>
-                        {locations?.map(loc => (
-                            <option key={loc.id} value={loc.id}>📍 {loc.name}</option>
-                        ))}
-                    </select>
-                </div>
-
                 <input
                     type="text"
                     value={scene.promptName}
@@ -223,19 +201,6 @@ export const SceneRow: React.FC<SceneRowProps> = ({
                             className="w-full bg-gray-900 border border-brand-orange rounded px-2 py-1 text-[10px] text-white focus:outline-none"
                         />
                     )}
-
-                    {/* NEW: Motion Director */}
-                    <select
-                        value={scene.cameraMovement || ''}
-                        onChange={(e) => updateScene(scene.id, { cameraMovement: e.target.value })}
-                        className="w-full bg-gray-800 text-[11px] text-blue-300 border border-gray-600 rounded px-2 py-1.5 focus:border-blue-500 mt-1 font-medium"
-                        title="Camera Movement (Motion Director)"
-                    >
-                        <option value="">🎥 No Motion</option>
-                        {CAMERA_MOVEMENTS.map(move => (
-                            <option key={move.value} value={move.value}>{move.label}</option>
-                        ))}
-                    </select>
 
                     <div className="grid grid-cols-2 gap-1.5">
                         <div className="flex flex-col space-y-1">
@@ -370,7 +335,7 @@ export const SceneRow: React.FC<SceneRowProps> = ({
                         <label key={mode.value} className="flex items-center gap-1 cursor-pointer">
                             <input
                                 type="radio"
-                                name={`veo - mode - ${scene.id} `}
+                                name={`veo-mode-${scene.id}`}
                                 value={mode.value}
                                 checked={(scene.veoMode || 'image-to-video') === mode.value}
                                 onChange={() => updateScene(scene.id, {
@@ -386,17 +351,17 @@ export const SceneRow: React.FC<SceneRowProps> = ({
 
                 <div className="flex gap-2">
                     <div
-                        className={`relative flex - 1 aspect - video bg - black rounded border overflow - hidden group cursor - pointer transition - colors ${scene.imageRole === 'start-frame' ? 'border-green-500' :
+                        className={`relative flex-1 aspect-video bg-black rounded border overflow-hidden group cursor-pointer transition-colors ${scene.imageRole === 'start-frame' ? 'border-green-500' :
                             scene.imageRole === 'end-frame' ? 'border-red-500' : 'border-gray-600 hover:border-green-500'
-                            } `}
+                            }`}
                         onClick={() => scene.generatedImage && openImageViewer()}
                     >
                         {scene.generatedImage && (
                             <div className="absolute top-1 left-1 z-20 flex items-center gap-1">
-                                <div className={`px - 1.5 py - 0.5 rounded text - [8px] font - bold ${scene.imageRole === 'start-frame' ? 'bg-green-600 text-white' :
+                                <div className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${scene.imageRole === 'start-frame' ? 'bg-green-600 text-white' :
                                     scene.imageRole === 'end-frame' ? 'bg-red-600 text-white' :
                                         'bg-gray-700 text-gray-300'
-                                    } `}>
+                                    }`}>
                                     {scene.imageRole === 'start-frame' ? '🟢 START' :
                                         scene.imageRole === 'end-frame' ? '🔴 END' : '📷'}
                                 </div>
@@ -481,7 +446,7 @@ export const SceneRow: React.FC<SceneRowProps> = ({
 
                 {/* NEW: Prop Reference Slot */}
                 <div className="flex gap-2 mt-1 px-1">
-                    <div className={`flex - 1 h - 20 relative rounded border border - dashed flex items - center transition - all ${scene.referenceImage ? 'border-blue-500 bg-blue-900/10' : 'border-gray-700 bg-gray-900/30'} `}>
+                    <div className={`flex-1 h-20 relative rounded border border-dashed flex items-center transition-all ${scene.referenceImage ? 'border-blue-500 bg-blue-900/10' : 'border-gray-700 bg-gray-900/30'}`}>
                         <div className="absolute -top-2 left-2 px-1 bg-gray-950 z-10 flex items-center gap-1 border border-gray-800 rounded">
                             <span className="text-[8px] text-blue-400 font-bold uppercase tracking-wider">🔗 Mỏ neo tham chiếu (Prop Anchor)</span>
                             {scene.referenceImage && (
@@ -596,11 +561,11 @@ export const SceneRow: React.FC<SceneRowProps> = ({
                     <button
                         onClick={generateImage}
                         disabled={scene.isGenerating}
-                        className={`flex - 1 py - 1.5 font - bold text - [10px] rounded shadow - lg transition - all transform active: scale - 95 flex items - center justify - center gap - 1
+                        className={`flex-1 py-1.5 font-bold text-[10px] rounded shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-1
                             ${scene.generatedImage
                                 ? 'bg-gray-700 text-white hover:bg-gray-600'
                                 : 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white'
-                            } disabled: opacity - 50 disabled: cursor - not - allowed`}
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                         {scene.generatedImage ? (
                             <><span>↻</span><span>Tạo Lại</span></>

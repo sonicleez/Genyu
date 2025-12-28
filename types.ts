@@ -88,7 +88,6 @@ export interface Scene {
   id: string;
   sceneNumber: string;
   groupId?: string; // ID of the SceneGroup this scene belongs to
-  locationId?: string; // Link to Master Location Asset
 
   // Legacy fields (backward compatibility)
   language1: string;
@@ -105,11 +104,6 @@ export interface Scene {
   lensOverride?: string; // User override for lens selection
   customLensOverride?: string; // Custom lens text
   customCameraAngle?: string; // Custom shot type text
-
-  // Motion Director (New)
-  cameraMovement?: string; // e.g., 'PAN_LEFT', 'DOLLY_IN'
-  cameraSpeed?: string; // e.g., 'slow', 'fast'
-
   transitionType?: string; // Transition to next scene
   customTransitionType?: string; // Custom transition text
 
@@ -219,16 +213,6 @@ export interface GalleryAsset {
 
 export type EditingMode = 'remove' | 'add' | 'style' | 'inpaint' | 'text-edit';
 
-export interface Location {
-  id: string;
-  name: string;
-  description: string; // Detailed visual prompt
-  masterImage: string | null; // Base64/URL reference
-  colorPalette?: string[];
-  tags?: string[];
-  isAnalyzing?: boolean; // For auto-captioning state
-}
-
 export interface ProjectState {
   projectName: string;
   detailedScript?: string;
@@ -263,7 +247,6 @@ export interface ProjectState {
   customCharacterStyles?: CharacterStyleDefinition[]; // User-created styles
 
   characters: Character[];
-  locations: Location[]; // Master Location Library
   products: Product[]; // List of Products/Props
   scenes: Scene[];
   sceneGroups?: SceneGroup[]; // Optional: List of SceneGroups (Scenes Group feature)

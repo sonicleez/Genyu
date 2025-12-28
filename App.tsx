@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useHotkeys } from './hooks/useHotkeys';
-import { Image as ImageIcon, MapPin } from 'lucide-react';
+import { Image as ImageIcon } from 'lucide-react';
 import { Header } from './components/common/Header';
 import { ProjectNameInput } from './components/common/ProjectNameInput';
 import { ApiKeyModal } from './components/modals/ApiKeyModal';
@@ -19,7 +19,6 @@ import { AuthModal } from './components/modals/AuthModal';
 import { ProjectBrowserModal } from './components/modals/ProjectBrowserModal';
 import { UserProfileModal } from './components/modals/UserProfileModal';
 import { ManualScriptModal } from './components/modals/ManualScriptModal';
-import { LocationManagerModal } from './components/modals/LocationManagerModal';
 import { ActivationScreen } from './components/ActivationScreen';
 import { AssetLibrary } from './components/sections/AssetLibrary';
 import { APP_NAME, PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from './constants/presets';
@@ -37,7 +36,6 @@ import { useProductLogic } from './hooks/useProductLogic';
 import { useSceneLogic } from './hooks/useSceneLogic';
 import { useDOPLogic } from './hooks/useDOPLogic';
 import { useVideoGeneration } from './hooks/useVideoGeneration';
-import { useLocationLogic } from './hooks/useLocationLogic';
 import { useAuth } from './hooks/useAuth';
 import { useProjectSync } from './hooks/useProjectSync';
 import { supabase } from './utils/supabaseClient';
@@ -98,7 +96,6 @@ const App: React.FC = () => {
     const [draggedSceneIndex, setDraggedSceneIndex] = useState<number | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
     const [isAnalyzingStyle, setIsAnalyzingStyle] = useState(false);
-    const [isLocationModalOpen, setLocationModalOpen] = useState(false);
 
 
     // Cloud Sync State
@@ -158,13 +155,6 @@ const App: React.FC = () => {
         classifyErrors,
         makeRetryDecision
     } = useDOPLogic(state);
-
-    const locationLogic = useLocationLogic(
-        state,
-        updateStateAndRecord,
-        userApiKey,
-        setProfileModalOpen
-    );
 
     const {
         performImageGeneration,
@@ -758,7 +748,6 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                     setViewMode={setViewMode}
                                     characters={state.characters}
                                     products={state.products}
-                                    locations={state.locations}
                                     sceneGroups={state.sceneGroups || []}
                                     updateScene={updateScene}
                                     removeScene={removeScene}
@@ -840,15 +829,6 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                             />
                         )}
                     </div>
-
-                    {/* Floating Location Button */}
-                    <button
-                        onClick={() => setLocationModalOpen(true)}
-                        className="fixed right-6 bottom-44 z-50 p-3 rounded-full shadow-2xl bg-gray-800 text-white border border-gray-600 hover:border-orange-500 hover:text-orange-500 transition-all hover:scale-110"
-                        title="Master Locations"
-                    >
-                        <MapPin size={24} />
-                    </button>
 
                     {/* Floating Gallery Button */}
                     <button
@@ -1060,16 +1040,6 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                         }}
                         existingCharacters={state.characters}
                         userApiKey={userApiKey}
-                    />
-
-                    <LocationManagerModal
-                        isOpen={isLocationModalOpen}
-                        onClose={() => setLocationModalOpen(false)}
-                        locations={state.locations}
-                        addLocation={locationLogic.addLocation}
-                        updateLocation={locationLogic.updateLocation}
-                        removeLocation={locationLogic.removeLocation}
-                        analyzeLocationImage={locationLogic.analyzeLocationImage}
                     />
 
                     <input
