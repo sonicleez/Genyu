@@ -65,7 +65,6 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
     const { presets, isLoading: presetsLoading, savePreset, deletePreset } = useResearchPresets(userId);
 
     // Analysis hook
-    // Analysis hook
     const { isAnalyzing, analysisResult, analysisError, analyzeScript, generateSceneMap, setAnalysisResult } = useScriptAnalysis(userApiKey);
 
     // Get selected items
