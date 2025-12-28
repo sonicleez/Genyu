@@ -752,7 +752,7 @@ export function useImageGeneration(
 
             // 5a. LOCATION REFERENCE
             if (sceneToUpdate.groupId) {
-                const group = currentState.groups.find(g => g.id === sceneToUpdate.groupId);
+                const group = currentState.sceneGroups?.find(g => g.id === sceneToUpdate.groupId);
                 if (group?.conceptImage) {
                     const imgData = await safeGetImageData(group.conceptImage);
                     if (imgData) {
