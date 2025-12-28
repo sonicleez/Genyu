@@ -139,11 +139,16 @@ export function useImageGeneration(
 
             if (effectiveStylePrompt === 'custom') {
                 styleInstruction = effectiveCustomStyle || '';
-                console.log('[ImageGen] Using CUSTOM style:', styleInstruction?.substring(0, 100) + '...');
+                console.log('[ImageGen] ✨ CUSTOM style check:', {
+                    effectiveStylePrompt,
+                    effectiveCustomStyle: effectiveCustomStyle?.substring(0, 50) + '...',
+                    customStyleImage: currentState.customStyleImage ? '✅ Image attached' : '❌ No image',
+                    stateCustomStyleInstruction: currentState.customStyleInstruction?.substring(0, 50) + '...'
+                });
             } else {
                 const selectedStyle = GLOBAL_STYLES.find(s => s.value === effectiveStylePrompt);
                 styleInstruction = selectedStyle ? selectedStyle.prompt : '';
-                console.log('[ImageGen] Using PRESET style:', effectiveStylePrompt);
+                console.log('[ImageGen] 🎨 PRESET style:', effectiveStylePrompt, '| Prompt:', styleInstruction?.substring(0, 50));
             }
 
             // --- 2. CINEMATOGRAPHY ---
@@ -349,13 +354,22 @@ export function useImageGeneration(
             }
             // 5b. STYLE REFERENCE IMAGE
             // Google pattern: "Apply style of [ref2] to subject in [ref1] while maintaining facial features"
-            if (currentState.stylePrompt === 'custom' && currentState.customStyleImage) {
+            // FIX: Use effectiveStylePrompt for consistency with earlier logic
+            console.log('[ImageGen] 🖼️ Style Image Check:', {
+                effectiveStylePrompt,
+                hasCustomStyleImage: !!currentState.customStyleImage,
+                customStyleImagePreview: currentState.customStyleImage?.substring(0, 50) + '...'
+            });
+            if (effectiveStylePrompt === 'custom' && currentState.customStyleImage) {
                 const imgData = await safeGetImageData(currentState.customStyleImage);
                 const charNames = selectedChars.map(c => c.name).join(', ');
                 if (imgData) {
                     parts.push({ text: `[STYLE_REFERENCE]: Apply ONLY the artistic rendering style of this image (shading, colors, texture) while RIGIDLY MAINTAINING the facial identity from ${charNames ? `IDENTITY references for ${charNames}` : 'above'}. DO NOT let this image influence the person's face structure or identity.` });
                     parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
                     continuityInstruction += `(STYLE ISOLATION: APPLY STYLE TO ENVIRONMENT/RENDER ONLY) `;
+                    console.log('[ImageGen] ✅ Style Image INJECTED into prompt');
+                } else {
+                    console.warn('[ImageGen] ⚠️ Style Image could not be loaded');
                 }
             }
 
