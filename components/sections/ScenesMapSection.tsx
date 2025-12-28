@@ -48,6 +48,7 @@ interface ScenesMapSectionProps {
     setDragOverIndex: (idx: number | null) => void;
     onClearAllImages: () => void;
     onInsertAngles?: (sceneId: string, selections: { value: string; customPrompt?: string }[], sourceImage: string) => void;
+    onExpandSequence?: (scene: Scene) => void; // Phase 4: Trigger sequence expansion modal
 }
 
 export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
@@ -91,7 +92,8 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
     onClearAllImages,
     onInsertAngles,
     analyzeRaccord,
-    suggestNextShot
+    suggestNextShot,
+    onExpandSequence
 }) => {
     const [collapsedGroups, setCollapsedGroups] = React.useState<Record<string, boolean>>({});
     const [activeGroupMenu, setActiveGroupMenu] = React.useState<string | null>(null);
@@ -656,6 +658,7 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                                                 setDragOverIndex(null);
                                             }}
                                             onInsertAngles={onInsertAngles}
+                                            onExpandSequence={onExpandSequence}
                                         />
 
                                         {/* Last Insert Button */}
@@ -701,6 +704,7 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                                             setDragOverIndex(null);
                                         }}
                                         onInsertAngles={onInsertAngles}
+                                        onExpandSequence={onExpandSequence}
                                         generateVeoPrompt={generateVeoPrompt}
                                         scenes={scenes}
                                     />

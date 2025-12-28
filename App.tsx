@@ -19,6 +19,7 @@ import { AuthModal } from './components/modals/AuthModal';
 import { ProjectBrowserModal } from './components/modals/ProjectBrowserModal';
 import { UserProfileModal } from './components/modals/UserProfileModal';
 import { ManualScriptModal } from './components/modals/ManualScriptModal';
+import { SequenceExpansionModal } from './components/modals/SequenceExpansionModal';
 import { ActivationScreen } from './components/ActivationScreen';
 import { AssetLibrary } from './components/sections/AssetLibrary';
 import { APP_NAME, PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from './constants/presets';
@@ -103,6 +104,8 @@ const App: React.FC = () => {
     const [isProjectBrowserOpen, setProjectBrowserOpen] = useState(false);
     const [isLibraryOpen, setLibraryOpen] = useState(false);
     const [isManualScriptModalOpen, setManualScriptModalOpen] = useState(false);
+    const [isSequenceExpansionOpen, setSequenceExpansionOpen] = useState(false);
+    const [selectedSceneForExpansion, setSelectedSceneForExpansion] = useState<Scene | null>(null);
     const [cloudProjects, setCloudProjects] = useState<any[]>([]);
 
     const mainContentRef = useRef<HTMLDivElement>(null);
@@ -794,6 +797,10 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                                         }));
                                     }}
                                     onInsertAngles={handleInsertAngles}
+                                    onExpandSequence={(scene) => {
+                                        setSelectedSceneForExpansion(scene);
+                                        setSequenceExpansionOpen(true);
+                                    }}
                                 />
                                 <div className="flex justify-end mt-8 gap-4">
                                     <button
@@ -1032,6 +1039,67 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                         existingCharacters={state.characters}
                         userApiKey={userApiKey}
                         userId={session?.user?.id || null}
+                    />
+
+                    {/* Sequence Expansion Modal (Phase 4) */}
+                    <SequenceExpansionModal
+                        isOpen={isSequenceExpansionOpen}
+                        onClose={() => {
+                            setSequenceExpansionOpen(false);
+                            setSelectedSceneForExpansion(null);
+                        }}
+                        scene={selectedSceneForExpansion}
+                        userApiKey={userApiKey}
+                        researchNotes={state.researchNotes}
+                        onExpand={(parentSceneId, subSceneProposals) => {
+                            // Generate sub-scenes from AI proposals
+                            const parentScene = state.scenes.find(s => s.id === parentSceneId);
+                            if (!parentScene) return;
+
+                            const subSceneIds: string[] = [];
+                            const newSubScenes = subSceneProposals.map((proposal, idx) => {
+                                const subId = generateId();
+                                subSceneIds.push(subId);
+                                return {
+                                    id: subId,
+                                    sceneNumber: `${parentScene.sceneNumber}.${idx + 1}`,
+                                    groupId: parentScene.groupId,
+                                    language1: proposal.contextDescription,
+                                    vietnamese: '',
+                                    promptName: `Sub ${idx + 1}: ${proposal.emotionalBeat}`,
+                                    contextDescription: proposal.contextDescription,
+                                    characterIds: parentScene.characterIds || [],
+                                    productIds: parentScene.productIds || [],
+                                    generatedImage: null,
+                                    veoPrompt: '',
+                                    isGenerating: false,
+                                    error: null,
+                                    // Sequence expansion fields
+                                    parentSceneId: parentSceneId,
+                                    sequenceIndex: idx,
+                                    emotionalBeat: proposal.emotionalBeat,
+                                    cameraProgression: proposal.cameraProgression,
+                                    cameraAngleOverride: proposal.suggestedAngle,
+                                    lensOverride: proposal.suggestedLens,
+                                    voSecondsEstimate: proposal.duration
+                                };
+                            });
+
+                            // Update state: mark parent as expanded and add sub-scenes
+                            updateStateAndRecord(s => ({
+                                ...s,
+                                scenes: [
+                                    ...s.scenes.map(scene =>
+                                        scene.id === parentSceneId
+                                            ? { ...scene, isExpandedSequence: true, subSceneIds }
+                                            : scene
+                                    ),
+                                    ...newSubScenes
+                                ]
+                            }));
+
+                            console.log('[SequenceExpansion] ✅ Created', newSubScenes.length, 'sub-scenes for scene', parentScene.sceneNumber);
+                        }}
                     />
 
                     <input

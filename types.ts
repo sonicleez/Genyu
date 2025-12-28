@@ -137,6 +137,14 @@ export interface Scene {
   voSecondsEstimate?: number; // Estimated VO duration in seconds
   referenceSceneId?: string; // For B-roll: ID of the VO scene this expands
 
+  // Sequence Expansion (Phase 4)
+  isExpandedSequence?: boolean;    // True if this scene has been expanded into sub-scenes
+  subSceneIds?: string[];          // IDs of child sub-scenes (for parent scene)
+  parentSceneId?: string;          // ID of parent scene (for sub-scenes only)
+  sequenceIndex?: number;          // Position in sequence (0, 1, 2... for sub-scenes)
+  emotionalBeat?: string;          // Director's emotional note for this sub-scene
+  cameraProgression?: string;      // DOP's camera note (e.g., "Wide establishing shot")
+
   // UI state
   isGenerating: boolean;
   error: string | null;
