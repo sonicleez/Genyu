@@ -24,13 +24,32 @@ export function useVideoGeneration(
 
     const generateVeoPrompt = useCallback(async (sceneId: string) => {
         const scene = state.scenes.find(s => s.id === sceneId);
-        if (!scene || !scene.generatedImage) return;
+        if (!scene) {
+            console.warn('[Veo] Scene not found:', sceneId);
+            return;
+        }
+        if (!scene.generatedImage) {
+            alert('Vui lòng tạo ảnh cho scene này trước khi tạo Veo prompt.');
+            console.warn('[Veo] No generated image for scene:', sceneId);
+            return;
+        }
 
         const rawApiKey = userApiKey || (process.env as any).API_KEY;
         const apiKey = typeof rawApiKey === 'string' ? rawApiKey.trim() : rawApiKey;
-        if (!apiKey) return;
+        if (!apiKey) {
+            setApiKeyModalOpen(true);
+            console.warn('[Veo] No API key available');
+            return;
+        }
+
+        // Mark scene as generating (for UI feedback)
+        updateStateAndRecord(s => ({
+            ...s,
+            scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, veoPrompt: '⏳ Đang tạo...' } : sc)
+        }));
 
         try {
+            console.log('[Veo] Starting prompt generation for scene:', sceneId);
             const ai = new GoogleGenAI({ apiKey });
             let data: string;
             let mimeType: string = 'image/jpeg';
@@ -51,7 +70,12 @@ export function useVideoGeneration(
                         reader.readAsDataURL(blob);
                     });
                 } catch (e) {
-                    console.error("Fetch image failed", e);
+                    console.error("[Veo] Fetch image failed:", e);
+                    updateStateAndRecord(s => ({
+                        ...s,
+                        scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, veoPrompt: '❌ Lỗi tải ảnh' } : sc)
+                    }));
+                    alert('Không thể tải ảnh từ URL. Vui lòng thử lại hoặc convert ảnh sang base64.');
                     return;
                 }
             }

@@ -14,6 +14,7 @@ export interface CharacterGeneratorModalProps {
     updateCharacter: (id: string, updates: Partial<Character>) => void;
     generateCharacterImage: (id: string, params: any) => Promise<void>;
     characters: Character[];
+    initialPrompt?: string; // NEW: Pre-fill from script analysis
 }
 export const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = ({
     isOpen,
@@ -24,7 +25,8 @@ export const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = (
     charId,
     updateCharacter,
     generateCharacterImage,
-    characters
+    characters,
+    initialPrompt = ''
 }) => {
     const [prompt, setPrompt] = useState('');
     const [style, setStyle] = useState('pixar');
@@ -40,14 +42,14 @@ export const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = (
 
     useEffect(() => {
         if (isOpen) {
-            setPrompt('');
+            setPrompt(initialPrompt || '');
             setError(null);
             setSelectedModel(model);
             setResolution('1K');
             setAspectRatio('9:16');
             setCustomStyle('');
         }
-    }, [isOpen, model]);
+    }, [isOpen, model, initialPrompt]);
 
     const handleGenerate = async () => {
         if (!prompt.trim() || !charId) return;

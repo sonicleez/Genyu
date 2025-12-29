@@ -112,7 +112,11 @@ export function useScriptAnalysis(userApiKey: string | null) {
             }
 
             if (characterStyle) {
-                contextInstructions += `\nVISUAL STYLE CONSTRAINT: The user selected the character style "${characterStyle.name}" (${characterStyle.promptInjection.global}).\n- You MUST generate "suggestedDescription" that aligns with this style.\n- CRITICAL: You MUST extract the SPECIFIC OUTFIT (uniforms, period clothing, colors) from the script.\n- IF SCRIPT IS VAGUE: You MUST INFER appropriate period-accurate clothing in EXTREME DETAIL.\n- TEXTURE & MATERIAL LOCK: You MUST describe textures with MICROSCOPIC DETAIL (e.g. "cracked leather with oil stains", "coarse wool with pilling", "rusted brass buttons", "frayed cotton edges").\n- FORMAT: "[Style Description]. WEARING: [Detailed Outfit Description with specific textures/materials] + [Accessories/Props]."\n- Example: "Faceless white mannequin. WEARING: A heavy, cracked vintage bomber jacket (worn leather texture), coarse grey wool trousers with mud splatters, and tarnished silver cufflinks."\n`;
+                // Check if this is a mannequin style
+                const isMannequinStyle = characterStyle.id?.includes('mannequin') || characterStyle.name?.toLowerCase().includes('mannequin');
+                const mannequinPrefix = isMannequinStyle ? 'Faceless white mannequin, egg-shaped head. ' : '';
+
+                contextInstructions += `\nVISUAL STYLE CONSTRAINT: The user selected the character style "${characterStyle.name}" (${characterStyle.promptInjection.global}).\n- You MUST generate "suggestedDescription" that aligns with this style.\n${isMannequinStyle ? `- MANDATORY MANNEQUIN PREFIX: Every character's suggestedDescription MUST start with: "${mannequinPrefix}"\n` : ''}- CRITICAL: You MUST extract the SPECIFIC OUTFIT (uniforms, period clothing, colors) from the script.\n- IF SCRIPT IS VAGUE: You MUST INFER appropriate period-accurate clothing in EXTREME DETAIL.\n- TEXTURE & MATERIAL LOCK: You MUST describe textures with MICROSCOPIC DETAIL (e.g. "cracked leather with oil stains", "coarse wool with pilling", "rusted brass buttons", "frayed cotton edges").\n- FORMAT: "${mannequinPrefix}WEARING: [Detailed Outfit Description with specific textures/materials] + [Accessories/Props] + [SHOES: specific footwear]."\n- Example: "Faceless white mannequin, egg-shaped head. WEARING: A heavy, cracked vintage bomber jacket (worn leather texture), coarse grey wool trousers with mud splatters, tarnished silver cufflinks. SHOES: Brown leather oxford shoes with scuff marks."\n- COMPLETE OUTFIT MANDATORY: Every character MUST have pants/skirt AND shoes specified.\n`;
             } else {
                 contextInstructions += `\n- For characters, provide a HIGHLY DETAILED VISUAL DESCRIPTION (Age, Ethnicity, Hair, Face, Body, Initial Outfit).`;
             }
@@ -146,13 +150,16 @@ SCRIPT:
 ${scriptText}
 """
 
-CRITICAL SCENE COUNT CONSTRAINT:
+CRITICAL SCENE COUNT CONSTRAINT - ABSOLUTE REQUIREMENT (FAILURE IF NOT MET):
 - Total words: ${wordCount}
-- Reading speed: ${wpm} WPM
+- Reading speed: ${wpm} WPM  
 - Total duration: ~${Math.round(estimatedTotalDuration / 60)} minutes (${estimatedTotalDuration} seconds)
-- MANDATORY: Generate between ${minSceneCount} and ${maxSceneCount} scenes (approximately ${expectedSceneCount} scenes).
-- Each scene should have approximately ${wordsPerScene} words of voice-over text (3-4 seconds of reading).
-- DO NOT cluster long paragraphs into one scene. Split them into multiple scenes.
+- !!! MANDATORY: Generate EXACTLY between ${minSceneCount} and ${maxSceneCount} scenes !!!
+- Target: ${expectedSceneCount} scenes total. This is NOT optional.
+- Each scene = approximately ${wordsPerScene} words (one sentence typically = one scene)
+- FAILURE CONDITION: If you return fewer than ${minSceneCount} scenes, the response will be REJECTED. Process the ENTIRE script.
+- TECHNIQUE: Split script sentence by sentence. Each sentence = 1 scene. Do NOT combine multiple sentences into one scene unless they describe a single camera shot.
+- DO NOT cluster paragraphs. DO NOT summarize. Break EVERY sentence into its own scene.
 
 TASK:
 1. Identify GLOBAL CONTEXT (World setting, Time period, Tone, Location summary).
@@ -184,7 +191,7 @@ RESPOND WITH JSON ONLY:
     {
       "name": "Étienne Marchand",
       "mentions": 5,
-      "suggestedDescription": "Faceless white mannequin head. WEARING: A tailored charcoal grey 1940s wool suit with wide lapels, crisp white shirt, silk tie, and a gold pocket watch chain. (Micro-texture: Fabric has visible weave texture).",
+      "suggestedDescription": "Faceless white mannequin, egg-shaped head. WEARING: A tailored charcoal grey 1940s wool suit with wide lapels, crisp white shirt, silk tie, and a gold pocket watch chain. (Micro-texture: Fabric has visible weave texture). SHOES: Polished black leather oxford shoes.",
       "outfitByChapter": {
         "chapter_1": "charcoal grey 1940s wool suit",
         "chapter_2": "casual linen shirt and trousers"
@@ -220,6 +227,7 @@ RESPOND WITH JSON ONLY:
                 config: {
                     temperature: 0.3,
                     responseMimeType: 'application/json',
+                    maxOutputTokens: 65536, // Allow large output for many scenes
                     ...(thinkingBudget && {
                         thinkingConfig: { thinkingBudget }
                     })
@@ -231,6 +239,12 @@ RESPOND WITH JSON ONLY:
             if (!jsonMatch) throw new Error('No JSON in response');
 
             const parsed = JSON.parse(jsonMatch[0]);
+
+            // Validate scene count - warn if too low
+            const actualSceneCount = parsed.scenes?.length || 0;
+            if (actualSceneCount < minSceneCount) {
+                console.warn(`[ScriptAnalysis] ⚠️ AI returned only ${actualSceneCount} scenes but expected ${minSceneCount}-${maxSceneCount}. AI may have ignored scene count constraint.`);
+            }
 
             // Calculate durations
             const result: ScriptAnalysisResult = {

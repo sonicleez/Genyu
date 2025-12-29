@@ -92,7 +92,7 @@ const App: React.FC = () => {
     const [viewMode, setViewMode] = useState<'table' | 'storyboard'>('table');
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [editingImage, setEditingImage] = useState<any>(null);
-    const [charGenState, setCharGenState] = useState<{ isOpen: boolean; charId: string | null }>({ isOpen: false, charId: null });
+    const [charGenState, setCharGenState] = useState<{ isOpen: boolean; charId: string | null; initialPrompt?: string }>({ isOpen: false, charId: null, initialPrompt: '' });
     const [isScreenplayModalOpen, setScreenplayModalOpen] = useState(false);
     const [draggedSceneIndex, setDraggedSceneIndex] = useState<number | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -971,13 +971,13 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                         onAnalyze={analyzeAndGenerateSheets}
                         onGenerateSheets={generateCharacterSheets}
                         onEditImage={openEditor}
-                        onOpenCharGen={(id) => setCharGenState({ isOpen: true, charId: id })}
+                        onOpenCharGen={(id, prompt) => setCharGenState({ isOpen: true, charId: id, initialPrompt: prompt || '' })}
                         onDelete={deleteCharacter}
                     />
 
                     <CharacterGeneratorModal
                         isOpen={charGenState.isOpen}
-                        onClose={() => setCharGenState({ isOpen: false, charId: null })}
+                        onClose={() => setCharGenState({ isOpen: false, charId: null, initialPrompt: '' })}
                         onSave={handleCharGenSave}
                         apiKey={userApiKey}
                         model={state.imageModel}
@@ -985,6 +985,7 @@ Format as a single paragraph of style instructions, suitable for use as an AI im
                         updateCharacter={updateCharacter}
                         generateCharacterImage={generateCharacterImage}
                         characters={state.characters}
+                        initialPrompt={charGenState.initialPrompt}
                     />
 
                     <AdvancedImageEditor

@@ -12,7 +12,7 @@ interface CharacterDetailModalProps {
     onAnalyze: (id: string, image: string, options?: { skipMetadata?: boolean }) => void;
     onGenerateSheets: (id: string) => void;
     onEditImage: (id: string, image: string, type: 'master' | 'face' | 'body' | 'prop' | 'side' | 'back', propIndex?: number) => void;
-    onOpenCharGen: (id: string) => void;
+    onOpenCharGen: (id: string, prompt?: string) => void;
     onDelete: (id: string) => void;
 }
 
@@ -99,7 +99,7 @@ export const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                         onUpload={(img) => updateCharacter(character.id, { masterImage: img })}
                         onDelete={() => updateCharacter(character.id, { masterImage: null })}
                         onEdit={character.masterImage ? () => onEditImage(character.id, character.masterImage!, 'master') : undefined}
-                        onGenerate={() => onOpenCharGen(character.id)}
+                        onGenerate={() => onOpenCharGen(character.id, character.description || '')}
                         aspect="auto"
                         subLabel="Upload hoặc Tạo AI"
                         isProcessing={character.isAnalyzing}

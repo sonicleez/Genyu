@@ -225,6 +225,19 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                     >
                         <Trash2 size={14} />
                     </button>
+
+                    <button
+                        onClick={() => {
+                            if (confirm('⚠️ XÓA SẠCH DỰ ÁN? Toàn bộ kịch bản và scenes sẽ bị xóa!')) {
+                                onCleanAll();
+                            }
+                        }}
+                        className="h-9 px-3 flex items-center gap-1.5 text-red-400 hover:text-white hover:bg-red-600/30 bg-gray-900 border border-red-900/30 rounded-lg transition-all text-[9px] font-bold uppercase"
+                        title="Xóa sạch toàn bộ dự án (Clean All)"
+                    >
+                        <Trash2 size={12} />
+                        <span>Clean</span>
+                    </button>
                 </div>
             </div>
 

@@ -213,6 +213,16 @@ export function useDOPLogic(state: ProjectState) {
 
             const sameLocation = prevScene.groupId === currentScene.groupId;
 
+            // Check if mannequin mode is enabled
+            const isMannequinMode = state.globalCharacterStyleId?.includes('mannequin');
+            const mannequinCheck = isMannequinMode ? `
+5. MANNEQUIN MATERIAL (CRITICAL): ALL human figures MUST have:
+   - Smooth cast resin material (like store display mannequin)
+   - White/grey plastic surface with no skin texture
+   - Egg-shaped featureless heads (NO eyes, nose, mouth, ears, hair)
+   - Mannequin-style hands (hard plastic, no veins or wrinkles)
+   If ANY human shows real skin texture, facial features, or non-plastic material, mark as ERROR.` : '';
+
             const dopPrompt = `You are a professional Director of Photography (DOP) checking for RACCORD (continuity) errors between two consecutive shots.
 
 SCENE CONTEXT:
@@ -225,17 +235,18 @@ SCENE CONTEXT:
 - Props expected: ${currentProps.join(', ') || 'None'}
 
 ${sameLocation ? 'SAME LOCATION: Background must be strictly consistent.' : 'DIFFERENT LOCATION: Transition allowed.'}
+${isMannequinMode ? 'STYLE: MANNEQUIN MODE ENABLED - All humans must be smooth plastic mannequins.' : ''}
 
 CHECK FOR:
 1. PROP CONTINUITY: Are props that should appear actually visible? Check position consistency (same hand, same table position).
 2. CHARACTER IDENTITY: Do faces match between shots? Same costume?
 3. LIGHTING: Is the lighting direction and color temperature consistent?
-4. SPATIAL: Are background elements consistent (furniture, walls, etc.)?
+4. SPATIAL: Are background elements consistent (furniture, walls, etc.)?${mannequinCheck}
 
 RESPOND IN JSON ONLY:
 {
   "isValid": true/false,
-  "errors": [{"type": "prop|character|lighting|spatial", "description": "specific issue"}],
+  "errors": [{"type": "prop|character|lighting|spatial|material", "description": "specific issue"}],
   "correctionPrompt": "If errors found, provide the EXACT instruction to add to the prompt to fix it"
 }`;
 

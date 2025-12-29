@@ -1,9 +1,32 @@
 
 import type { ProjectState, Character, Scene } from '../types';
 
+// Helper to detect and remove circular references
+const getCircularReplacer = () => {
+  const seen = new WeakSet();
+  return (key: string, value: any) => {
+    if (typeof value === "object" && value !== null) {
+      if (seen.has(value)) {
+        console.warn(`[Save] Circular reference detected at key: ${key}`);
+        return "[Circular Reference]";
+      }
+      seen.add(value);
+    }
+    return value;
+  };
+};
+
 export const saveProject = (state: ProjectState, filename: string): void => {
   try {
-    const dataStr = JSON.stringify(state, null, 2);
+    // Use replacer to handle circular references
+    const dataStr = JSON.stringify(state, getCircularReplacer(), 2);
+
+    // Check if data is too large (warn at 50MB)
+    const sizeInMB = new Blob([dataStr]).size / (1024 * 1024);
+    if (sizeInMB > 50) {
+      console.warn(`[Save] Project file is very large: ${sizeInMB.toFixed(2)} MB. This may cause issues.`);
+    }
+
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -13,9 +36,17 @@ export const saveProject = (state: ProjectState, filename: string): void => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    console.log(`[Save] Project saved successfully: ${filename} (${sizeInMB.toFixed(2)} MB)`);
   } catch (error) {
-    console.error("Failed to save project:", error);
-    alert("Không thể lưu dự án.");
+    console.error("[Save] Failed to save project:", error);
+    // More specific error message
+    if (error instanceof TypeError && error.message.includes('circular')) {
+      alert("Không thể lưu dự án: Dữ liệu bị lỗi tham chiếu vòng (circular reference).");
+    } else if (error instanceof RangeError) {
+      alert("Không thể lưu dự án: Dữ liệu quá lớn. Vui lòng xóa bớt ảnh.");
+    } else {
+      alert("Không thể lưu dự án. Vui lòng kiểm tra Console để biết chi tiết lỗi.");
+    }
   }
 };
 
@@ -27,40 +58,40 @@ const migrateCharacter = (char: any): Character => {
     const bodyImage = char.images[1] || null;
     // Các ảnh còn lại coi như là props nhưng chưa có tên
     const props = char.images.slice(2).map((img: string, idx: number) => ({
-        id: `prop_${Date.now()}_${idx}`,
-        name: `Prop ${idx + 1}`,
-        image: img
+      id: `prop_${Date.now()}_${idx}`,
+      name: `Prop ${idx + 1}`,
+      image: img
     }));
-    
+
     // Fill cho đủ 3 props rỗng nếu thiếu
     while (props.length < 3) {
-        props.push({
-            id: `prop_${Date.now()}_${props.length}`,
-            name: '',
-            image: null
-        });
+      props.push({
+        id: `prop_${Date.now()}_${props.length}`,
+        name: '',
+        image: null
+      });
     }
 
     return {
-        ...char,
-        masterImage: null, // New field
-        faceImage,
-        bodyImage,
-        props: props.slice(0, 3), // Giới hạn 3 props
+      ...char,
+      masterImage: null, // New field
+      faceImage,
+      bodyImage,
+      props: props.slice(0, 3), // Giới hạn 3 props
     };
   }
   // Nếu đã là cấu trúc mới nhưng thiếu masterImage (do update version)
   if (char.masterImage === undefined) {
-      return { ...char, masterImage: null };
+    return { ...char, masterImage: null };
   }
   return char as Character;
 };
 
 const migrateScene = (scene: any): Scene => {
-    return {
-        ...scene,
-        veoPrompt: scene.veoPrompt || '' // Default empty string if missing
-    };
+  return {
+    ...scene,
+    veoPrompt: scene.veoPrompt || '' // Default empty string if missing
+  };
 };
 
 export const openProject = (onLoad: (state: ProjectState) => void): void => {
@@ -76,34 +107,34 @@ export const openProject = (onLoad: (state: ProjectState) => void): void => {
         try {
           if (e.target && typeof e.target.result === 'string') {
             const rawData = JSON.parse(e.target.result);
-            
+
             // Migrate characters
-            const migratedCharacters = Array.isArray(rawData.characters) 
-                ? rawData.characters.map(migrateCharacter)
-                : [];
-            
+            const migratedCharacters = Array.isArray(rawData.characters)
+              ? rawData.characters.map(migrateCharacter)
+              : [];
+
             // Migrate scenes
             const migratedScenes = Array.isArray(rawData.scenes)
-                ? rawData.scenes.map(migrateScene)
-                : [];
+              ? rawData.scenes.map(migrateScene)
+              : [];
 
             const loadedState: ProjectState = {
-                ...rawData,
-                stylePrompt: rawData.stylePrompt || 'cinematic-realistic',
-                imageModel: rawData.imageModel || 'gemini-2.5-flash-image',
-                aspectRatio: rawData.aspectRatio || "16:9", 
-                scriptLanguage: rawData.scriptLanguage || 'vietnamese',
-                characters: migratedCharacters,
-                scenes: migratedScenes
+              ...rawData,
+              stylePrompt: rawData.stylePrompt || 'cinematic-realistic',
+              imageModel: rawData.imageModel || 'gemini-2.5-flash-image',
+              aspectRatio: rawData.aspectRatio || "16:9",
+              scriptLanguage: rawData.scriptLanguage || 'vietnamese',
+              characters: migratedCharacters,
+              scenes: migratedScenes
             };
 
             // Basic validation
             if (
-                typeof loadedState.projectName !== 'string' ||
-                !Array.isArray(loadedState.characters) ||
-                !Array.isArray(loadedState.scenes)
+              typeof loadedState.projectName !== 'string' ||
+              !Array.isArray(loadedState.characters) ||
+              !Array.isArray(loadedState.scenes)
             ) {
-                throw new Error("Invalid project file format.");
+              throw new Error("Invalid project file format.");
             }
             onLoad(loadedState);
           }

@@ -4,6 +4,37 @@ import { slugify } from './helpers';
 // @ts-ignore
 const JSZip = window.JSZip;
 
+// Helper to extract base64 data and detect file extension from data URL
+const extractImageData = (dataUrl: string): { base64: string; ext: string } | null => {
+    if (!dataUrl) return null;
+
+    // Handle data URL format: data:image/png;base64,XXXXX
+    if (dataUrl.startsWith('data:')) {
+        const match = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (match) {
+            const mimeExt = match[1]; // png, jpeg, webp, etc.
+            const base64 = match[2];
+            // Map MIME types to file extensions
+            let ext = 'png';
+            if (mimeExt === 'jpeg' || mimeExt === 'jpg') ext = 'jpg';
+            else if (mimeExt === 'webp') ext = 'webp';
+            else if (mimeExt === 'gif') ext = 'gif';
+            else if (mimeExt === 'png') ext = 'png';
+            else ext = mimeExt; // fallback to mime type as extension
+            return { base64, ext };
+        }
+        // Fallback: try simple split
+        const parts = dataUrl.split(',');
+        if (parts.length === 2) {
+            return { base64: parts[1], ext: 'png' };
+        }
+    }
+
+    // Not a data URL - skip
+    console.warn('[ZIP Export] Skipping non-data URL image');
+    return null;
+};
+
 export const handleDownloadAll = (state: ProjectState) => {
     if (!JSZip) {
         alert("JSZip not found. Please ensure it is loaded.");
@@ -21,31 +52,62 @@ export const handleDownloadAll = (state: ProjectState) => {
     // 1. SCENE MAP IMAGES
     state.scenes.forEach((scene) => {
         if (scene.generatedImage) {
-            const imgData = scene.generatedImage.split(',')[1];
-            scenesFolder?.file(`${scene.sceneNumber}.png`, imgData, { base64: true });
-            hasImages = true;
+            const imgData = extractImageData(scene.generatedImage);
+            if (imgData) {
+                scenesFolder?.file(`${scene.sceneNumber}.${imgData.ext}`, imgData.base64, { base64: true });
+                hasImages = true;
+            }
         }
     });
 
-    // 2. ASSETS
+    // 2. ASSETS - Characters
     state.characters.forEach(c => {
         const cName = slugify(c.name) || c.id;
-        if (c.masterImage) { charsFolder?.file(`${cName}_master.png`, c.masterImage.split(',')[1], { base64: true }); hasImages = true; }
-        if (c.faceImage) { charsFolder?.file(`${cName}_face.png`, c.faceImage.split(',')[1], { base64: true }); hasImages = true; }
-        if (c.bodyImage) { charsFolder?.file(`${cName}_body.png`, c.bodyImage.split(',')[1], { base64: true }); hasImages = true; }
-        if (c.sideImage) { charsFolder?.file(`${cName}_side.png`, c.sideImage.split(',')[1], { base64: true }); hasImages = true; }
-        if (c.backImage) { charsFolder?.file(`${cName}_back.png`, c.backImage.split(',')[1], { base64: true }); hasImages = true; }
+        const charImages: { key: string; img: string | null | undefined }[] = [
+            { key: 'master', img: c.masterImage },
+            { key: 'face', img: c.faceImage },
+            { key: 'body', img: c.bodyImage },
+            { key: 'side', img: c.sideImage },
+            { key: 'back', img: c.backImage },
+        ];
+        charImages.forEach(({ key, img }) => {
+            if (img) {
+                const imgData = extractImageData(img);
+                if (imgData) {
+                    charsFolder?.file(`${cName}_${key}.${imgData.ext}`, imgData.base64, { base64: true });
+                    hasImages = true;
+                }
+            }
+        });
     });
 
+    // 3. ASSETS - Products
     state.products.forEach(p => {
         const pName = slugify(p.name) || p.id;
-        if (p.masterImage) { productsFolder?.file(`${pName}_master.png`, p.masterImage.split(',')[1], { base64: true }); hasImages = true; }
+        if (p.masterImage) {
+            const imgData = extractImageData(p.masterImage);
+            if (imgData) {
+                productsFolder?.file(`${pName}_master.${imgData.ext}`, imgData.base64, { base64: true });
+                hasImages = true;
+            }
+        }
         if (p.views) {
-            if (p.views.front) { productsFolder?.file(`${pName}_front.png`, p.views.front.split(',')[1], { base64: true }); hasImages = true; }
-            if (p.views.back) { productsFolder?.file(`${pName}_back.png`, p.views.back.split(',')[1], { base64: true }); hasImages = true; }
-            if (p.views.left) { productsFolder?.file(`${pName}_left.png`, p.views.left.split(',')[1], { base64: true }); hasImages = true; }
-            if (p.views.right) { productsFolder?.file(`${pName}_right.png`, p.views.right.split(',')[1], { base64: true }); hasImages = true; }
-            if (p.views.top) { productsFolder?.file(`${pName}_top.png`, p.views.top.split(',')[1], { base64: true }); hasImages = true; }
+            const viewImages: { key: string; img: string | null | undefined }[] = [
+                { key: 'front', img: p.views.front },
+                { key: 'back', img: p.views.back },
+                { key: 'left', img: p.views.left },
+                { key: 'right', img: p.views.right },
+                { key: 'top', img: p.views.top },
+            ];
+            viewImages.forEach(({ key, img }) => {
+                if (img) {
+                    const imgData = extractImageData(img);
+                    if (imgData) {
+                        productsFolder?.file(`${pName}_${key}.${imgData.ext}`, imgData.base64, { base64: true });
+                        hasImages = true;
+                    }
+                }
+            });
         }
     });
 

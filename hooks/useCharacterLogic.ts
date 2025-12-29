@@ -3,6 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { ProjectState, Character } from '../types';
 import { generateId } from '../utils/helpers';
 import { GLOBAL_STYLES, CHARACTER_STYLES } from '../constants/presets';
+import { getCharacterStyleById } from '../constants/characterStyles';
 import { callGeminiAPI } from '../utils/geminiUtils';
 import { uploadImageToSupabase } from '../utils/storageUtils';
 
@@ -298,9 +299,28 @@ TECHNICAL REQUIREMENTS:
 - QUALITY: Sharp, clean, no artifacts.
             `.trim();
 
-            const facePrompt = `${styleInstruction}\n\n[TASK: FACE ID]\nGenerate an EXTREME CLOSE-UP portrait of this character's face on a pure white background.\nCharacter: ${finalDescription}\nSTYLE: Match the reference exactly - "${detectedStyle}"`;
+            // Inject Character Style Preset (e.g., Mannequin) if set globally
+            let characterStyleInstruction = '';
+            if (state.globalCharacterStyleId) {
+                const charStyle = getCharacterStyleById(state.globalCharacterStyleId, state.customCharacterStyles || []);
+                if (charStyle) {
+                    characterStyleInstruction = `
+**CHARACTER STYLE PRESET - ABSOLUTE OVERRIDE:**
+${charStyle.promptInjection.global}
 
-            const bodyPrompt = `${styleInstruction}\n\n[TASK: FULL BODY]\nGenerate a FULL BODY view (head to toe, feet visible) of this character on a pure white background.\nPose: T-Pose or A-Pose, front view.\nCharacter: ${finalDescription}\nSTYLE: Match the reference exactly - "${detectedStyle}"`;
+PER-CHARACTER REQUIREMENT:
+${charStyle.promptInjection.character}
+
+NEGATIVE CONSTRAINTS:
+${charStyle.promptInjection.negative}
+`;
+                    console.log('[Character Gen] Using character style preset:', charStyle.name);
+                }
+            }
+
+            const facePrompt = `${characterStyleInstruction}${styleInstruction}\n\n[TASK: FACE ID]\nGenerate an EXTREME CLOSE-UP portrait of this character's face on a pure white background.\nCharacter: ${finalDescription}\nSTYLE: Match the reference exactly - "${detectedStyle}"`;
+
+            const bodyPrompt = `${characterStyleInstruction}${styleInstruction}\n\n[TASK: FULL BODY]\nGenerate a FULL BODY view (head to toe, feet visible) of this character on a pure white background.\nPose: T-Pose or A-Pose, front view.\nCharacter: ${finalDescription}\nCOMPLETE OUTFIT MANDATORY: The character must be FULLY CLOTHED including SHOES. If shoes are not specified, add appropriate footwear.\nSTYLE: Match the reference exactly - "${detectedStyle}"`;
 
             const model = 'gemini-3-pro-image-preview'; // Use best model for style matching
 
@@ -408,8 +428,20 @@ TECHNICAL REQUIREMENTS:
             const stylePrompt = style === 'custom' ? customStyle : (styleConfig?.prompt || styleConfig?.label || style);
 
             const fullPrompt = `
+!!! CRITICAL OUTPUT CONSTRAINT - SINGLE CHARACTER ONLY !!!
+Generate EXACTLY ONE image containing EXACTLY ONE PERSON. ABSOLUTELY NO:
+- TWO OR MORE CHARACTERS (even if identical or same person from different angles)
+- Front and back views together
+- Multiple angles or poses of the same character
+- Duplicates or clones of the character
+- Inset boxes showing face close-ups or detail views
+- Character sheets with multiple views
+- Text labels, titles, or captions
+- Grid layouts or collages
+The output MUST be ONE SINGLE PERSON in ONE SINGLE POSE with NO duplicates.
+
 CHARACTER DESIGN TASK:
-Create a professional character sheet with the following specifications:
+Create a professional character reference showing EXACTLY ONE PERSON:
 
 STYLE PRESET:
 ${stylePrompt}
@@ -418,14 +450,34 @@ CHARACTER DESCRIPTION:
 ${prompt}
 
 MANDATORY REQUIREMENTS:
+- SUBJECT COUNT: EXACTLY 1 PERSON. NOT 2, NOT 3. ONLY 1.
 - Background: Pure Solid White Studio Background (RGB 255, 255, 255). No shadows on background, no textures.
 - Framing: FULL BODY HEAD-TO-TOE, clear silhouette, MUST INCLUDE FEET.
-- Pose: Standard A-Pose or T-Pose (Fixed Reference Pose).
+- Pose: Standard A-Pose or T-Pose (Fixed Reference Pose). ONE POSE ONLY.
 - Lighting: Professional studio softbox lighting, high contrast, rim light for separation.
 - Quality: 8K, Ultra-Sharp focus, Hyper-detailed texture, Ray-tracing style.
 - Face: EXTREMELY SHARP and DETAILED facial features (Eyes, Nose, Mouth must be perfect). NO BLURRED FACES.
+- OUTPUT: ONE SINGLE PERSON. No duplicates, no multiple views.
 
-CRITICAL: The style MUST strictly follow the "STYLE PRESET" and Capturing the specific vibe described. Solid white background is non-negotiable. Face must be recognizable and sharp.
+COMPLETE OUTFIT CHECKLIST (ALL ITEMS MANDATORY):
+1. ✅ HEAD: Hair/headwear as described
+2. ✅ UPPER BODY: Shirt/jacket/top with visible details (buttons, collar, texture)
+3. ✅ LOWER BODY: Pants/skirt/dress - MUST BE VISIBLE, not cropped
+4. ✅ FEET: Shoes/boots/footwear - ABSOLUTELY MANDATORY, NO BARE FEET unless specified
+5. ✅ ACCESSORIES: Belt, watch, jewelry, bags as mentioned in description
+
+If any clothing item is not specified in the description, ADD APPROPRIATE DEFAULT:
+- No pants specified → Add dark trousers
+- No shoes specified → Add brown leather shoes
+- No top specified → Add a neutral colored shirt
+
+FAILURE CONDITIONS (will be REJECTED):
+1. MORE THAN ONE CHARACTER IN THE IMAGE (biggest failure!)
+2. Character missing ANY clothing item (especially pants or shoes)
+3. Multiple images/panels/insets in the output
+4. Any text or labels in the image
+
+CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be recognizable and sharp.
             `.trim();
 
             const apiKey = (userApiKey || (process.env as any).API_KEY)?.trim();

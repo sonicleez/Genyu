@@ -216,10 +216,27 @@ export function useImageGeneration(
                     ? ' !!! STRICT FACELESS MODE: NO FACES, NO EYES, NO MOUTH. Heads must be turned away, in shadow, or obscured. !!! '
                     : '';
 
-                charPrompt = `Appearing Characters: ${charDesc}${outfitConstraint}${facelessConstraint}`;
+                // MANNEQUIN MATERIAL ENFORCEMENT (Critical for style consistency)
+                const isMannequinMode = currentState.globalCharacterStyleId?.includes('mannequin');
+                const mannequinMaterialConstraint = isMannequinMode
+                    ? `!!! ABSOLUTE MANNEQUIN MATERIAL LOCK !!!
+ALL human figures in this scene (main characters, supporting characters, background crowds, extras, hands, body parts) MUST have:
+- HEAD: Smooth cast resin material, pristine white mannequin finish, egg-shaped featureless head, NO facial features (NO eyes, NO nose, NO mouth, NO ears, NO hair)
+- HANDS: White/grey mannequin hands, hard plastic surface, smooth finish, NO skin texture, NO veins, NO wrinkles
+- BODY: Consistent matte white/grey plastic material throughout. NO skin tones, NO flesh texture, NO human skin whatsoever.
+- MATERIAL KEYWORDS: "smooth cast resin", "pristine white mannequin finish", "hard plastic surface", "store display mannequin"
+This applies to EVERY human figure in the scene without ANY exception. If a hand appears, it must be a mannequin hand. If a face appears, it must be a featureless mannequin head.`
+                    : '';
+
+                charPrompt = `${mannequinMaterialConstraint} Appearing Characters: ${charDesc}${outfitConstraint}${facelessConstraint}`;
             } else if (isDocumentary) {
-                // DOCUMENTARY MODE: Allow anonymous people (crowds, subjects, etc.)
-                charPrompt = `DOCUMENTARY STYLE: Use realistic anonymous people fitting the scene context. No specific character identity required - focus on authentic human moments and environmental storytelling. Generate contextually appropriate people (workers, crowds, passersby, subjects) without fixed character references.`;
+                // DOCUMENTARY MODE: Check mannequin style first
+                const isMannequinMode = currentState.globalCharacterStyleId?.includes('mannequin');
+                const mannequinForDocs = isMannequinMode
+                    ? `Use FACELESS WHITE MANNEQUIN figures (smooth cast resin material, egg-shaped featureless heads, hard plastic hands, NO skin texture whatsoever)`
+                    : `Use realistic anonymous people fitting the scene context`;
+
+                charPrompt = `DOCUMENTARY STYLE: ${mannequinForDocs} for all humans. Focus on storytelling through clothing and body language. NO SKIN TEXTURE - if mannequin style is enabled, ALL body parts must be smooth plastic.`;
             } else {
                 // EXPLICIT NO CHARACTER for macro/landscape shots (non-documentary)
                 charPrompt = `STRICT NEGATIVE: NO PEOPLE, NO CHARACTERS, NO HUMANS, NO FACES, NO BODY PARTS. EXPLICITLY REMOVE ALL HUMAN ELEMENTS. FOCUS ONLY ON ${cleanedContext.toUpperCase() || 'ENVIRONMENT'}.`;
@@ -408,34 +425,47 @@ export function useImageGeneration(
             if (sceneToUpdate.groupId) {
                 const groupObj = currentState.sceneGroups?.find(g => g.id === sceneToUpdate.groupId);
 
-                // BACKGROUND LOCK: Use first scene in group for environment only
+                // SAME LOCATION LOCK: All scenes in this group share the same physical environment
+                if (groupObj) {
+                    const sameLocationLock = `!!! SAME LOCATION LOCK !!! This scene is part of location group "${groupObj.name}". 
+ALL SCENES IN THIS GROUP SHARE THE SAME PHYSICAL ENVIRONMENT: ${groupObj.description}.
+YOU MUST MAINTAIN:
+- Same architectural style, room layout, wall colors, and ceiling height
+- Same furniture positions (tables, chairs, counters remain fixed)
+- Same window/door placements
+- Same lighting sources and color temperature
+- Same time of day: ${groupObj.timeOfDay || 'consistent with group'}
+DO NOT invent new environments or change the location. This is NOT a different place.`;
+                    continuityInstruction += sameLocationLock;
+                }
+
+                // CONCEPT IMAGE ANCHOR: Use for ALL scenes in group (CRITICAL - not just after first)
+                if (groupObj?.conceptImage) {
+                    const imgData = await safeGetImageData(groupObj.conceptImage);
+                    if (imgData) {
+                        const refLabel = `MANDATORY_LOCATION_TEMPLATE`;
+                        parts.push({ text: `[${refLabel}]: !!! CRITICAL ENVIRONMENT ANCHOR !!! This concept image defines the EXACT environment for ALL scenes in this location group. EVERY shot must exist within this space. Match: architectural style, layout, color palette, lighting, textures, and geometry. CHARACTER APPEARANCE comes from separate IDENTITY references - only use this for ENVIRONMENT. This location must be IDENTICAL across all scenes in the group.` });
+                        parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
+                        continuityInstruction += `(CONCEPT ENVIRONMENT ENFORCED) `;
+                    }
+                } else if (groupObj) {
+                    // WARN: No concept image - add stronger text-based instruction
+                    console.warn(`[ImageGen] ⚠️ Group "${groupObj.name}" has no concept image. Environment may vary.`);
+                    continuityInstruction += `[NO CONCEPT IMAGE]: Strictly infer environment from "${groupObj.description}". Do NOT hallucinate different locations. `;
+                }
+
+                // FIRST SCENE BACKUP: If no concept image but first scene exists, use it as environment template
                 const firstSceneInGroup = currentState.scenes
-                    .filter(s => s.groupId === sceneToUpdate.groupId && s.generatedImage)
+                    .filter(s => s.groupId === sceneToUpdate.groupId && s.generatedImage && s.id !== sceneToUpdate.id)
                     .sort((a, b) => parseInt(a.scene_number) - parseInt(b.scene_number))[0];
 
-                if (firstSceneInGroup?.generatedImage) {
+                if (firstSceneInGroup?.generatedImage && !groupObj?.conceptImage) {
                     const imgData = await safeGetImageData(firstSceneInGroup.generatedImage);
                     if (imgData) {
                         const refLabel = `ENVIRONMENT_ONLY_LOCK`;
-                        // CLEAN REFERENCE: Only use for background, explicitly ignore characters/props
                         parts.push({ text: `[${refLabel}]: Use this as the RIGID template for architecture and lighting ONLY. Match: layout, wall textures, room geometry, furniture placement, and lighting source. ABSOLUTELY IGNORE characters, clothing, and small props. This is a background-only consistency anchor.` });
                         parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
                         continuityInstruction += `(BACKGROUND LOCK FROM MASTER SCENE) `;
-                    }
-                }
-
-                // SHOT_CONTINUITY REMOVED - Clean Reference approach
-                // Previous scene references caused props/character leaking
-                // Now relying solely on character Face ID + Body Sheet for consistency
-
-                if (!firstSceneInGroup && groupObj?.conceptImage) {
-                    const imgData = await safeGetImageData(groupObj.conceptImage);
-                    if (imgData) {
-                        const refLabel = `ENVIRONMENT_ANCHOR (Global Concept)`;
-                        // Stronger instruction for concept art as base environment
-                        parts.push({ text: `[${refLabel}]: Use this as the AUTHORITATIVE template for the environment. Match: architectural style, layout, color palette, lighting, textures, and general geometry. ABSOLUTELY IGNORE characters. This is the master reference for this entire location.` });
-                        parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
-                        continuityInstruction += `(CONCEPT ENVIRONMENT LOCK) `;
                     }
                 }
 
@@ -539,10 +569,20 @@ export function useImageGeneration(
                         const anchorLabel = isZoomingIn ? "ZOOM_IN_ANCHOR" : "CONTINUITY_ANCHOR";
 
                         parts.push({
-                            text: `[${anchorLabel}]: AUTHORITATIVE VISUAL SOURCE. This is the previous frame in the sequence. ${charReturnWarning} 
-                        1. LIGHTING & COLOR: Match the exact color grading, light direction, and shadow density of this image.
-                        2. ENVIRONMENT: If this is a different angle of the same room, elements must remain in fixed relative positions.
-                        3. SUBJECTS: If characters/objects from this image appear in the new prompt, they MUST look identical (same clothes, same face, same texture).` });
+                            text: `[${anchorLabel}]: CONTINUITY REFERENCE (SELECTIVE). Use previous frame for consistency. ${charReturnWarning}
+INHERIT THESE:
+1. PHYSICAL LIGHTING: Match actual light source direction and shadow placement
+2. ENVIRONMENT: Fixed positions of furniture, architecture, and landmarks
+3. SUBJECTS: Character appearance (clothing, pose, physical features)
+
+!!! DO NOT INHERIT - CAMERA-SPECIFIC EFFECTS !!!:
+- Camera filters (CCTV, night vision, security camera, surveillance overlays)
+- Vignettes, scan lines, recording artifacts, grain patterns
+- Color grading specific to surveillance/special camera POV
+- Text overlays, timestamps, HUD elements, date stamps
+- Fish-eye distortion or lens artifacts from special cameras
+
+The NEW scene has its OWN camera style as specified in the current prompt. DO NOT apply previous scene's camera treatment.` });
 
                         parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
                     }

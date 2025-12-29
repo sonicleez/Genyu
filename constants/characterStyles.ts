@@ -21,13 +21,18 @@ export const BUILT_IN_CHARACTER_STYLES: CharacterStyleDefinition[] = [
         name: 'Faceless Mannequin',
         category: 'faceless',
         promptInjection: {
-            global: `FACELESS DOCUMENTARY STYLE: ALL human figures in this scene must have smooth, featureless white mannequin heads. No eyes, no nose, no mouth, no facial features whatsoever. Clean oval white face like a store display mannequin. This applies to EVERY human - main characters AND background people, crowds, extras. Differentiate characters ONLY by clothing, body language, and positioning.`,
-            character: `[FACELESS CHARACTER]: This character has a smooth white mannequin head with NO facial features. Identify them by their clothing and posture only.`,
-            negative: `NO real human faces, NO eyes, NO nose, NO mouth, NO facial expressions, NO photorealistic faces on ANY character including background crowds and extras. NO partial faces. ALL humans must be faceless mannequins.`
+            global: `FACELESS DOCUMENTARY STYLE - STRICT MANNEQUIN PROTOCOL:
+1. HEAD: ALL human figures must have smooth, featureless white mannequin heads made of MATTE WHITE PLASTIC/RESIN. ABSOLUTELY NO eyes, NO nose, NO mouth, NO ears, NO hair texture, NO facial features whatsoever. Clean egg-shaped oval white head like a department store display mannequin. The head surface must be uniform smooth white with NO indentations or shadows suggesting facial features.
+2. HANDS: Grey or white mannequin hands, smooth plastic material, articulated at joints like display mannequin hands.
+3. MATERIAL CONSISTENCY: Head, neck, and hands must all be the same smooth matte white/grey plastic material throughout. No skin tones, no flesh texture.
+4. COMPLETE OUTFIT MANDATORY: Every character must be FULLY CLOTHED from head to toe. This includes: shirt/top, pants/skirt/dress, SHOES (mandatory - no bare feet), and any accessories mentioned in the description. If shoes are not specified, add appropriate footwear for the outfit.
+5. APPLIES TO ALL: This applies to EVERY human - main characters AND background people, crowds, extras. Differentiate characters ONLY by clothing, body language, and positioning.`,
+            character: `[FACELESS MANNEQUIN CHARACTER]: This character has a smooth white plastic mannequin head with ZERO facial features - no eyes, no nose, no mouth, no ears. Head is a perfect smooth white oval. Hands are grey/white mannequin hands. Character MUST be fully clothed including SHOES. Identify them by their detailed clothing, posture, and accessories only.`,
+            negative: `NO real human faces, NO eyes, NO nose, NO mouth, NO ears, NO eyebrows, NO facial expressions, NO photorealistic faces on ANY character including background crowds and extras. NO partial faces, NO face shadows suggesting features. NO bare feet, NO missing pants, NO missing shoes, NO incomplete outfits. ALL humans must be complete department store mannequins with full outfits and footwear.`
         },
         isBuiltIn: true,
         tags: ['documentary', 'anonymous', 'privacy', 'reenactment'],
-        description: 'All characters have smooth white mannequin-style blank faces',
+        description: 'All characters have smooth white mannequin-style blank faces with complete outfits',
         icon: '👤'
     },
     {
