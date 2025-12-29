@@ -31,6 +31,19 @@ interface ManualScriptModalProps {
     existingCharacters: Character[];
     userApiKey: string | null;
     userId: string | null;
+    // NEW: Persist data across modal open/close
+    savedData?: {
+        scriptText?: string;
+        readingSpeed?: 'slow' | 'medium' | 'fast';
+        selectedStyleId?: string;
+        selectedDirectorId?: string;
+        selectedModel?: string;
+        directorNotes?: string;
+        dopNotes?: string;
+        storyContext?: string;
+        analysisResult?: any;
+    };
+    onSaveData?: (data: ManualScriptModalProps['savedData']) => void;
 }
 
 export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
@@ -39,7 +52,9 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
     onImport,
     existingCharacters,
     userApiKey,
-    userId
+    userId,
+    savedData,
+    onSaveData
 }) => {
     // Script input
     const [scriptText, setScriptText] = useState('');
@@ -74,6 +89,38 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
 
     // Analysis hook
     const { isAnalyzing, analysisResult, analysisError, analyzeScript, generateSceneMap, setAnalysisResult } = useScriptAnalysis(userApiKey);
+
+    // [NEW] Load saved data when modal opens
+    React.useEffect(() => {
+        if (isOpen && savedData) {
+            if (savedData.scriptText) setScriptText(savedData.scriptText);
+            if (savedData.readingSpeed) setReadingSpeed(savedData.readingSpeed);
+            if (savedData.selectedStyleId) setSelectedStyleId(savedData.selectedStyleId);
+            if (savedData.selectedDirectorId) setSelectedDirectorId(savedData.selectedDirectorId);
+            if (savedData.selectedModel) setSelectedModel(savedData.selectedModel);
+            if (savedData.directorNotes) setDirectorNotes(savedData.directorNotes);
+            if (savedData.dopNotes) setDopNotes(savedData.dopNotes);
+            if (savedData.storyContext) setStoryContext(savedData.storyContext);
+            if (savedData.analysisResult) setAnalysisResult(savedData.analysisResult);
+        }
+    }, [isOpen, savedData, setAnalysisResult]);
+
+    // [NEW] Save data when state changes (debounced by key field changes)
+    React.useEffect(() => {
+        if (onSaveData && scriptText) {
+            onSaveData({
+                scriptText,
+                readingSpeed,
+                selectedStyleId,
+                selectedDirectorId,
+                selectedModel,
+                directorNotes,
+                dopNotes,
+                storyContext,
+                analysisResult
+            });
+        }
+    }, [scriptText, readingSpeed, selectedStyleId, selectedDirectorId, selectedModel, directorNotes, dopNotes, storyContext, analysisResult, onSaveData]);
 
     // [New] Auto-fill Global Context from analysis
     React.useEffect(() => {

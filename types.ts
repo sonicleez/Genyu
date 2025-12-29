@@ -258,6 +258,19 @@ export interface ProjectState {
     dop?: string;       // DOP's cinematography/lighting notes
     story?: string;     // [New] Global Story Context / World Setting (e.g. "Casino in Monte Carlo, 2019")
   };
+
+  // Manual Script Import Data (persist to avoid re-analysis)
+  manualScriptData?: {
+    scriptText?: string;
+    readingSpeed?: 'slow' | 'medium' | 'fast';
+    selectedStyleId?: string;
+    selectedDirectorId?: string;
+    selectedModel?: string;
+    directorNotes?: string;
+    dopNotes?: string;
+    storyContext?: string;
+    analysisResult?: any; // Cached ScriptAnalysisResult
+  };
 }
 
 export interface Product {
