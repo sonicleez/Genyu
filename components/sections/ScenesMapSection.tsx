@@ -139,7 +139,10 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                     {/* Primary Action Group (1, 2, 3) */}
                     <div className="flex items-center bg-black/40 p-1 rounded-xl border border-gray-800/80 shadow-2xl">
                         <button
-                            onClick={handleGenerateAllImages}
+                            onClick={() => {
+                                console.log('[UI] Generate All Images button clicked!');
+                                handleGenerateAllImages();
+                            }}
                             disabled={isBatchGenerating}
                             className={`h-9 px-4 font-black text-[9px] text-brand-cream rounded-lg bg-gradient-to-r ${PRIMARY_GRADIENT} hover:${PRIMARY_GRADIENT_HOVER} transition-all duration-300 disabled:opacity-50 uppercase tracking-widest flex items-center gap-2`}
                         >
