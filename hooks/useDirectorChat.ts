@@ -44,6 +44,8 @@ INTENTS:
 4. PROD_Q_AND_A: Answer questions about the script, characters, or production status.
 5. SYNERGY_DIRECTIVE: Give a technical instruction to the DOP.
 6. MATERIAL_INHERITANCE: Sample visual details or materials from one scene and apply to another (e.g. "Dùng chất liệu của cảnh 10 cho cảnh 15").
+7. SYNC_AND_REGENERATE: Fix a scene to match another scene's DNA AND regenerate it (e.g. "Sửa cảnh 2 giống cảnh 1 rồi tạo lại", "Cảnh 5 sai, sync với cảnh 4").
+
 
 
 OUTPUT FORMAT: JSON only
@@ -213,9 +215,21 @@ OUTPUT FORMAT: JSON only
 
                         updateStateAndRecord(s => ({
                             ...s,
-                            scenes: s.scenes.map(scene => scene.id === targetScene.id ? { ...scene, contextDescription: newPrompt } : scene)
+                            scenes: s.scenes.map(scene => scene.id === targetScene.id ? {
+                                ...scene,
+                                contextDescription: newPrompt,
+                                generatedImage: null // Clear old image to allow regeneration
+                            } : scene)
                         }));
-                        setAgentState('director', 'success', `Đã đồng bộ Visual DNA từ cảnh ${sourceScene.sceneNumber} sang cảnh ${targetScene.sceneNumber}.`);
+
+                        // Auto-regenerate the target scene with reference to source
+                        addProductionLog('director', 'Đang tự động tạo lại cảnh với DNA mới...', 'info');
+                        setAgentState('director', 'speaking', 'Đang tạo lại ảnh với Visual DNA mới...', 'Regenerating');
+
+                        // Trigger regeneration for the target scene
+                        await handleGenerateAllImages([targetScene.id]);
+
+                        setAgentState('director', 'success', `Đã đồng bộ và tạo lại cảnh ${targetScene.sceneNumber} với DNA từ cảnh ${sourceScene.sceneNumber}.`);
                     } catch (e) {
                         setAgentState('director', 'error', 'Không thể trích xuất DNA chất liệu.');
                     }
@@ -223,6 +237,57 @@ OUTPUT FORMAT: JSON only
                     setAgentState('director', 'error', 'Tôi không tìm thấy cảnh nguồn hoặc cảnh đích để đồng bộ.');
                 }
                 break;
+
+            case 'SYNC_AND_REGENERATE':
+                // This is similar to MATERIAL_INHERITANCE but explicitly triggers regeneration
+                const srcScene = state.scenes.find(s => s.sceneNumber === String(entities.sourceSceneId) || s.id === entities.sourceSceneId);
+                const tgtScene = state.scenes.find(s => s.sceneNumber === String(entities.targetSceneId) || s.id === entities.targetSceneId);
+
+                if (srcScene && tgtScene) {
+                    addProductionLog('director', response || `Đang sửa và tạo lại cảnh ${tgtScene.sceneNumber} theo DNA của cảnh ${srcScene.sceneNumber}.`, 'info');
+                    setAgentState('director', 'thinking', 'Đang phân tích và đồng bộ DNA...', 'Sync & Regen');
+
+                    try {
+                        const syncPrompt = `As the Director, you need to fix Scene ${tgtScene.sceneNumber} to match Scene ${srcScene.sceneNumber}'s visual DNA.
+                        
+                        SOURCE SCENE (Reference):
+                        "${srcScene.contextDescription}"
+                        
+                        TARGET SCENE (Needs fixing):
+                        "${tgtScene.contextDescription}"
+                        
+                        RULES:
+                        1. Keep the TARGET scene's story and actions.
+                        2. Inject the SOURCE scene's visual style, materials, lighting, and atmosphere.
+                        3. Ensure character descriptions match between scenes.
+                        
+                        OUTPUT: The corrected complete prompt for the target scene.`;
+
+                        const fixedPrompt = await callGeminiText(userApiKey || '', syncPrompt, 'You are an Expert Director.', 'gemini-3-flash-preview', false);
+
+                        // Update prompt and clear image
+                        updateStateAndRecord(s => ({
+                            ...s,
+                            scenes: s.scenes.map(scene => scene.id === tgtScene.id ? {
+                                ...scene,
+                                contextDescription: fixedPrompt,
+                                generatedImage: null
+                            } : scene)
+                        }));
+
+                        // Auto-regenerate
+                        setAgentState('director', 'speaking', `Đang tạo lại cảnh ${tgtScene.sceneNumber}...`, 'Regenerating');
+                        await handleGenerateAllImages([tgtScene.id]);
+
+                        setAgentState('director', 'success', `Đã sửa và tạo lại cảnh ${tgtScene.sceneNumber} thành công!`);
+                    } catch (e) {
+                        setAgentState('director', 'error', 'Lỗi khi đồng bộ và tạo lại cảnh.');
+                    }
+                } else {
+                    setAgentState('director', 'error', 'Tôi không tìm thấy cảnh nguồn hoặc cảnh đích.');
+                }
+                break;
+
 
 
             default:
