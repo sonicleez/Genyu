@@ -178,33 +178,55 @@ export function useImageGeneration(
             const isHighRes = (currentState.imageModel || 'gemini-3-pro-image-preview') === 'gemini-3-pro-image-preview';
 
             // --- REASONING STEP (Refinement/Edit Mode) ---
-            // If we have a Base Image (Edit Mode) and a Command, we use "Banana Pro" (Gemini Vision) to plan the edit first.
+            // If we have a Base Image (Edit Mode) and a Command, we use "Gemini 3 Reasoning" to plan the edit first.
             let reasonedContext = null;
             if (baseImage && (refinementPrompt || sceneToUpdate.contextDescription) && isHighRes) {
                 try {
                     const baseImgData = await safeGetImageData(baseImage);
+
+                    // Detect Reference Image (for Composite / Transfer)
+                    // Priority: Explicit arg -> Scene property
+                    const refImgUrl = referenceImage || sceneToUpdate.referenceImage;
+                    const refImgData = refImgUrl ? await safeGetImageData(refImgUrl) : null;
+
                     if (baseImgData && userApiKey) {
-                        console.log('[Reasoning] 🧠 Analyzing Base Image + Request with Gemini Vision...');
+                        console.log('[Reasoning] 🧠 Analyzing Images + Request with Gemini Vision...');
+
+                        const imagesToSend = [baseImgData];
+                        let instructionExtra = "";
+
+                        if (refImgData) {
+                            imagesToSend.push(refImgData);
+                            instructionExtra = `
+IMAGE 2 IS A REFERENCE OBJECT/SOURCE.
+- The User Command may ask to "use the object from Scene X" or "transfer the style".
+- Look at IMAGE 2 to identify the specific object, texture, or detail requested.
+- COMPOSITE instruction: Describe the scene from IMAGE 1, but include the object/element from IMAGE 2 as requested, ensuring it fits the lighting and perspective of IMAGE 1.
+`;
+                        }
+
                         const analysisPrompt = `Role: Expert VFX Supervisor & Prompt Engineer.
-Task: The user wants to EDIT the attached image.
+Task: The user wants to EDIT the attached IMAGE 1.
 User Command: "${refinementPrompt || sceneToUpdate.contextDescription}".
 Current Scene Context: "${sceneToUpdate.contextDescription}".
+${instructionExtra}
 
 INSTRUCTIONS:
-1. Analyze the attached image (Composition, Lighting, Subject Pose, Colors).
-2. Interpret the User Command (e.g. "Zoom in on hand", "Change background to night").
-3. Generate a precise Image Generation Prompt that:
-   - Describes the DESIRED OUTPUT image in detail.
-   - Explicitly describes elements that must REMAIN from the source image (to ensure continuity).
-   - Explicitly describes the CHANGES.
-   - Uses professional cinematic terminology (e.g. "Close-up shot", "Shallow depth of field").
+1. Analyze IMAGE 1 (Context, Composition, Lighting, Subject).
+${refImgData ? "2. Analyze IMAGE 2 (Reference Object/Detail)." : ""}
+3. Interpret the User Command.
+4. Generate a precise Image Generation Prompt that:
+   - Describes the DESIRED OUTPUT image in complete detail.
+   - Explicitly describes elements from IMAGE 1 that must REMAIN (Composition, Pose, Background).
+   - Explicitly describes the NEW elements and their interaction with the scene.
+   - Uses professional cinematic terminology.
 
 OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
 
                         const reasonedPrompt = await callGeminiVisionReasoning(
                             userApiKey,
                             analysisPrompt,
-                            [baseImgData],
+                            imagesToSend,
                             'gemini-3.0-flash' // "Gemini 3 Reasoning"
                         );
 
