@@ -724,17 +724,24 @@ The NEW scene has its OWN camera style as specified in the current prompt. DO NO
     }, [stateRef, userApiKey, setApiKeyModalOpen, userId]);
 
     const handleGenerateAllImages = useCallback(async (specificSceneIds?: string[]) => {
+        console.log('[BatchGen] handleGenerateAllImages called', { specificSceneIds, totalScenes: state.scenes.length });
+
         const scenesToGenerate = specificSceneIds
             ? state.scenes.filter(s => specificSceneIds.includes(s.id))
             : state.scenes.filter(s => !s.generatedImage && s.contextDescription);
 
-        if (scenesToGenerate.length === 0) return alert("Không có phân cảnh nào cần tạo ảnh.");
+        console.log('[BatchGen] Scenes to generate:', scenesToGenerate.length);
+
+        if (scenesToGenerate.length === 0) {
+            console.log('[BatchGen] No scenes to generate, showing alert');
+            return alert("Không có phân cảnh nào cần tạo ảnh.");
+        }
 
         setIsBatchGenerating(true);
         setIsStopping(false);
         stopRef.current = false;
 
-
+        console.log('[BatchGen] Starting batch generation...');
         setAgentState('director', 'thinking', 'Đang lập kế hoạch sản xuất cho các phân cảnh...');
         setAgentState('dop', 'idle', '');
 
