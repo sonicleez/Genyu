@@ -451,14 +451,7 @@ Use this image strictly as a "Style & Material" reference, NOT a pixel-perfect l
 
             // 5.0.1 BASE IMAGE INJECTION (For Img2Img / Editing)
             // If baseImage is provided, this is an EDIT operation, not a generation from scratch.
-            if (baseImage) {
-                const baseImgData = await safeGetImageData(baseImage);
-                if (baseImgData) {
-                    parts.unshift({ inlineData: { data: baseImgData.data, mimeType: baseImgData.mimeType } }); // Put Base Image FIRST
-                    parts.unshift({ text: `!!! EDITING INSTRUCTION !!!: The image provided below is the BASE SCENE. You MUST MODIFY this exact image. PRESERVE the room layout, lighting, and camera angle of this BASE IMAGE. ONLY add/remove objects as described in the prompt.` });
-                    console.log('[ImageGen] 🖼️ Base Image Editing Mode activated');
-                }
-            }
+
 
 
             // 5a. CHARACTER FACE ID ANCHOR (ABSOLUTE FIRST - Before Style!)

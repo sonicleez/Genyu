@@ -46,7 +46,7 @@ export function useScriptGeneration(
 
             const prompt = buildScriptPrompt(idea, activePreset, activeCharacters, activeProducts, count, effectiveLanguage, state.customScriptInstruction, director);
 
-            const [modelId, thinkingLevel] = (state.scriptModel || 'gemini-3-flash-preview|high').split('|');
+            const [modelId, thinkingLevel] = (state.scriptModel || 'gemini-3.0-flash|high').split('|');
 
             const ai = new GoogleGenAI({ apiKey });
 
