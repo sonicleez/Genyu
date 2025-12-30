@@ -9,7 +9,7 @@ import {
 import { DIRECTOR_PRESETS, DirectorCategory } from '../constants/directors';
 import { getPresetById } from '../utils/scriptPresets';
 import { uploadImageToSupabase, syncUserStatsToCloud } from '../utils/storageUtils';
-import { safeGetImageData } from '../utils/geminiUtils';
+import { safeGetImageData, callGeminiVisionReasoning } from '../utils/geminiUtils';
 
 // Helper function to clean VEO-specific tokens from prompt for image generation
 const cleanPromptForImageGen = (prompt: string): string => {
@@ -176,6 +176,48 @@ export function useImageGeneration(
 
 
             const isHighRes = (currentState.imageModel || 'gemini-3-pro-image-preview') === 'gemini-3-pro-image-preview';
+
+            // --- REASONING STEP (Refinement/Edit Mode) ---
+            // If we have a Base Image (Edit Mode) and a Command, we use "Banana Pro" (Gemini Vision) to plan the edit first.
+            let reasonedContext = null;
+            if (baseImage && (refinementPrompt || sceneToUpdate.contextDescription) && isHighRes) {
+                try {
+                    const baseImgData = await safeGetImageData(baseImage);
+                    if (baseImgData && userApiKey) {
+                        console.log('[Reasoning] 🧠 Analyzing Base Image + Request with Gemini Vision...');
+                        const analysisPrompt = `Role: Expert VFX Supervisor & Prompt Engineer.
+Task: The user wants to EDIT the attached image.
+User Command: "${refinementPrompt || sceneToUpdate.contextDescription}".
+Current Scene Context: "${sceneToUpdate.contextDescription}".
+
+INSTRUCTIONS:
+1. Analyze the attached image (Composition, Lighting, Subject Pose, Colors).
+2. Interpret the User Command (e.g. "Zoom in on hand", "Change background to night").
+3. Generate a precise Image Generation Prompt that:
+   - Describes the DESIRED OUTPUT image in detail.
+   - Explicitly describes elements that must REMAIN from the source image (to ensure continuity).
+   - Explicitly describes the CHANGES.
+   - Uses professional cinematic terminology (e.g. "Close-up shot", "Shallow depth of field").
+
+OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
+
+                        const reasonedPrompt = await callGeminiVisionReasoning(
+                            userApiKey,
+                            analysisPrompt,
+                            [baseImgData],
+                            'gemini-2.0-flash-exp' // "Banana Pro Reasoning"
+                        );
+
+                        if (reasonedPrompt) {
+                            console.log('[Reasoning] ✨ Enhanced Prompt:', reasonedPrompt);
+                            cleanedContext = reasonedPrompt.trim(); // Override context with smart prompt
+                            reasonedContext = reasonedPrompt.trim();
+                        }
+                    }
+                } catch (err) {
+                    console.warn('[Reasoning] Failed:', err);
+                }
+            }
 
             // --- 3. CHARACTERS & PRODUCTS ---
             const selectedChars = currentState.characters.filter(c => sceneToUpdate.characterIds.includes(c.id));

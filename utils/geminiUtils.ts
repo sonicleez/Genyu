@@ -104,3 +104,34 @@ export const callGeminiText = async (
         throw err;
     }
 };
+
+export const callGeminiVisionReasoning = async (
+    apiKey: string,
+    prompt: string,
+    images: { data: string; mimeType: string }[],
+    model: string = 'gemini-2.0-flash-exp' // Default to "Banana Pro" (Latest Flash/Pro)
+): Promise<string> => {
+    const trimmedKey = apiKey?.trim();
+    if (!trimmedKey) throw new Error('Missing API Key');
+
+    try {
+        const ai = new GoogleGenAI({ apiKey: trimmedKey });
+
+        const parts: any[] = [{ text: prompt }];
+
+        // Add all images
+        images.forEach(img => {
+            parts.push({ inlineData: { data: img.data, mimeType: img.mimeType } });
+        });
+
+        const response = await ai.models.generateContent({
+            model: model,
+            contents: [{ parts: parts }],
+        });
+
+        return response.text || '';
+    } catch (err: any) {
+        console.error('[Gemini Vision] ❌ Reasoning Error:', err.message);
+        throw err;
+    }
+};
