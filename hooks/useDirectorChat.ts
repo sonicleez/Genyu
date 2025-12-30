@@ -334,7 +334,11 @@ OUTPUT FORMAT: JSON only
                     setAgentState('director', 'thinking', 'Đang phân tích và đồng bộ DNA...', 'Sync & Regen');
 
                     try {
-                        const directiveText = entities.directive ? `4. ADDITIONAL DIRECTIVE (OVERRIDE): "${entities.directive}". Apply this change strictly (e.g. change camera angle, add details).` : '';
+                        const directiveText = entities.directive
+                            ? `4. ADDITIONAL DIRECTIVE (OVERRIDE - CRITICAL): "${entities.directive}". 
+                               - If this asks to MOVE/ADD an OBJECT from Source to Target: Describe the object from Source detailedly and place it in Target as requested.
+                               - If this changes ACTION: Update the Target action logic to match this directive.`
+                            : '';
 
                         const syncPrompt = `As the Director, you need to fix Scene ${tgtScene.sceneNumber} to match Scene ${srcScene.sceneNumber}'s visual DNA.
                         
@@ -345,9 +349,9 @@ OUTPUT FORMAT: JSON only
                         "${tgtScene.contextDescription}"
                         
                         RULES:
-                        1. Keep the TARGET scene's story and actions.
+                        1. Keep the TARGET scene's CORE story (unless Directive overrides it).
                         2. Inject the SOURCE scene's visual style, materials, lighting, and atmosphere.
-                        3. Ensure character descriptions match between scenes.
+                        3. If Directive mentions specific objects from Source (e.g. "take the backpack"), DESCRIBE that object into the Target prompt exactly.
                         ${directiveText}
                         
                         OUTPUT: The corrected complete prompt for the target scene.`;
