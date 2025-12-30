@@ -12,15 +12,15 @@ interface ThinkingAgentsProps {
 const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
     // Persistent state for positions (using snapped side and Y)
     const [positions, setPositions] = React.useState(() => {
-        const saved = localStorage.getItem('agent_positions_v2');
+        const saved = localStorage.getItem('agent_positions_v3');
         return saved ? JSON.parse(saved) : {
-            director: { y: 80, side: 'left' as const },
-            dop: { y: 80, side: 'right' as const }
+            director: { y: 150, side: 'left' as const },
+            dop: { y: 250, side: 'right' as const }
         };
     });
 
-    // Temp screen X during drag
-    const [dragX, setDragX] = React.useState<number | null>(null);
+    // Temp screen X/Y during drag
+    const [dragPos, setDragPos] = React.useState<{ x: number, y: number } | null>(null);
 
     // Persistent state for minimized state
     const [minimized, setMinimized] = React.useState(() => {
@@ -30,9 +30,10 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
 
     const [dragging, setDragging] = React.useState<'director' | 'dop' | null>(null);
     const dragOffset = React.useRef({ x: 0, y: 0 });
+    const isClickRef = React.useRef(true);
 
     React.useEffect(() => {
-        localStorage.setItem('agent_positions_v2', JSON.stringify(positions));
+        localStorage.setItem('agent_positions_v3', JSON.stringify(positions));
     }, [positions]);
 
     React.useEffect(() => {
@@ -41,44 +42,46 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
 
     const handleMouseDown = (e: React.MouseEvent, agent: 'director' | 'dop') => {
         setDragging(agent);
+        isClickRef.current = true;
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         dragOffset.current = {
             x: e.clientX - rect.left,
             y: e.clientY - rect.top
         };
+        setDragPos({ x: rect.left, y: rect.top });
         e.preventDefault();
+        e.stopPropagation();
     };
 
     React.useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!dragging) return;
+            isClickRef.current = false;
 
-            // Constrain Y to viewport
-            const yFromBottom = window.innerHeight - e.clientY - (48 - dragOffset.current.y);
-            const clampedY = Math.max(20, Math.min(window.innerHeight - 100, yFromBottom));
-
-            setPositions(prev => ({
-                ...prev,
-                [dragging]: { ...prev[dragging], y: clampedY }
-            }));
-
-            setDragX(e.clientX - dragOffset.current.x);
+            setDragPos({
+                x: e.clientX - dragOffset.current.x,
+                y: e.clientY - dragOffset.current.y
+            });
         };
 
         const handleMouseUp = (e: MouseEvent) => {
             if (!dragging) return;
 
-            // Snap to nearest side
-            const threshold = window.innerWidth / 2;
-            const finalSide = e.clientX < threshold ? 'left' : 'right';
+            if (!isClickRef.current) {
+                // Snap to nearest side
+                const threshold = window.innerWidth / 2;
+                const finalSide = e.clientX < threshold ? 'left' : 'right';
+                const yFromBottom = window.innerHeight - e.clientY;
+                const clampedY = Math.max(20, Math.min(window.innerHeight - 100, yFromBottom));
 
-            setPositions(prev => ({
-                ...prev,
-                [dragging]: { ...prev[dragging], side: finalSide }
-            }));
+                setPositions(prev => ({
+                    ...prev,
+                    [dragging]: { side: finalSide, y: clampedY }
+                }));
+            }
 
             setDragging(null);
-            setDragX(null);
+            setDragPos(null);
         };
 
         if (dragging) {
@@ -110,33 +113,49 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
 
         // Calculate dynamic style
         const style: React.CSSProperties = {
-            bottom: `${pos.y}px`,
             zIndex: isCurrentlyDragging ? 1000 : 300,
             cursor: isCurrentlyDragging ? 'grabbing' : 'grab',
-            transition: isCurrentlyDragging ? 'none' : 'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)'
+            transition: isCurrentlyDragging ? 'none' : 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+            position: 'fixed'
         };
 
-        if (isCurrentlyDragging && dragX !== null) {
-            style.left = `${dragX}px`;
+        if (isCurrentlyDragging && dragPos) {
+            style.left = `${dragPos.x}px`;
+            style.top = `${dragPos.y}px`;
+            style.right = 'auto'; // Clear right during drag
+            style.bottom = 'auto'; // Clear bottom during drag
         } else {
-            style[side] = '24px';
+            style.bottom = `${pos.y}px`;
+            if (side === 'left') {
+                style.left = '24px';
+                style.right = 'auto';
+            } else {
+                style.right = '24px';
+                style.left = 'auto';
+            }
         }
 
         return (
             <div
                 onMouseDown={(e) => handleMouseDown(e, agentKey)}
+                onClick={(e) => {
+                    if (isClickRef.current) {
+                        setMinimized(prev => ({ ...prev, [agentKey]: !prev[agentKey] }));
+                    }
+                    e.stopPropagation();
+                }}
                 style={style}
-                className={`fixed flex flex-col items-${side === 'left' ? 'start' : 'end'} select-none group`}
+                className={`flex flex-col items-${side === 'left' ? 'start' : 'end'} select-none group pointer-events-auto`}
             >
                 {/* Thought/Message Bubble */}
                 {!isMinimized && agent.message && (
-                    <div className={`mb-4 max-w-xs p-4 rounded-2xl backdrop-blur-xl border ${side === 'left' ? 'rounded-bl-none' : 'rounded-br-none'} transition-all duration-500 shadow-2xl relative ${agent.status === 'error' ? 'bg-red-900/20 border-red-500/40 text-red-200' :
-                        agent.status === 'success' ? 'bg-green-900/20 border-green-500/40 text-green-200' :
-                            'bg-gray-900/60 border-white/10 text-white'
+                    <div className={`mb-4 max-w-[200px] p-4 rounded-2xl backdrop-blur-2xl border ${side === 'left' ? 'rounded-bl-none' : 'rounded-br-none'} transition-all duration-500 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative ${agent.status === 'error' ? 'bg-red-900/40 border-red-500/40 text-red-200' :
+                        agent.status === 'success' ? 'bg-green-900/40 border-green-500/40 text-green-200' :
+                            'bg-gray-900/80 border-white/10 text-white'
                         }`}>
                         <div className="flex items-start gap-2">
-                            <MessageSquare size={14} className="mt-1 opacity-50 shrink-0" />
-                            <p className="text-xs font-bold leading-relaxed tracking-tight">{agent.message}</p>
+                            <MessageSquare size={12} className="mt-1 opacity-50 shrink-0" />
+                            <p className="text-[11px] font-bold leading-relaxed tracking-tight">{agent.message}</p>
                         </div>
 
                         {/* Thinking Dots */}
@@ -149,9 +168,9 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
                         )}
 
                         {/* Pointer */}
-                        <div className={`absolute -bottom-2 ${side === 'left' ? 'left-4' : 'right-4'} w-4 h-4 transform rotate-45 border-r border-b ${agent.status === 'error' ? 'bg-red-900/20 border-red-500/20' :
-                            agent.status === 'success' ? 'bg-green-900/20 border-green-500/20' :
-                                'bg-gray-950/40 border-white/5'
+                        <div className={`absolute -bottom-2 ${side === 'left' ? 'left-4' : 'right-4'} w-4 h-4 transform rotate-45 border-r border-b ${agent.status === 'error' ? 'bg-red-900/40 border-red-500/20' :
+                            agent.status === 'success' ? 'bg-green-900/40 border-green-500/20' :
+                                'bg-gray-900/80 border-white/5'
                             }`}></div>
                     </div>
                 )}
@@ -165,37 +184,28 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
                         </div>
                     )}
 
-                    <div
-                        className={`relative transition-all duration-300 ${isMinimized ? 'scale-75 opacity-50 hover:opacity-100' : 'scale-100 hover:scale-110'}`}
-                        onClick={(e) => {
-                            // Only toggle if not dragging (threshold check)
-                            if (!isCurrentlyDragging) {
-                                setMinimized(prev => ({ ...prev, [agentKey]: !prev[agentKey] }));
-                            }
-                        }}
-                    >
-                        <div className={`w-12 h-12 rounded-full ${colorClass} p-0.5 shadow-2xl relative animate-float`}>
-                            {/* Glow effect */}
-                            <div className={`absolute inset-0 rounded-full blur-md ${colorClass} opacity-30 animate-pulse`}></div>
-
-                            <div className="w-full h-full rounded-full bg-gray-950 flex items-center justify-center relative z-10 border border-white/10 overflow-hidden">
+                    <div className={`relative transition-all duration-500 ${isMinimized ? 'opacity-60 scale-90' : 'scale-100 hover:scale-110'}`}>
+                        {/* Premium Floating Ring */}
+                        <div className={`w-14 h-14 rounded-full ${colorClass} p-1 shadow-[0_0_30px_rgba(0,0,0,0.4)] relative animate-float transition-all duration-500 ${isMinimized ? '' : 'ring-4 ring-white/5'}`}>
+                            {/* Inner Container */}
+                            <div className="w-full h-full rounded-full bg-gray-950/90 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/10 overflow-hidden">
                                 {isMinimized ? (
-                                    <Icon size={16} className="opacity-40" />
+                                    <Icon size={18} className="opacity-40" />
                                 ) : (
-                                    <Icon size={20} className={agent.status === 'thinking' ? 'animate-pulse' : ''} />
+                                    <Icon size={24} className={`${agent.status === 'thinking' ? 'animate-pulse' : ''} text-white`} />
                                 )}
                             </div>
 
                             {/* Status indicator dot */}
-                            <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-gray-950 z-20 ${agent.status === 'thinking' ? 'bg-blue-500 animate-pulse' :
+                            <div className={`absolute top-0 right-0 w-4 h-4 rounded-full border-2 border-gray-950 z-20 ${agent.status === 'thinking' ? 'bg-blue-500 animate-pulse' :
                                 agent.status === 'speaking' ? 'bg-brand-orange animate-pulse' :
                                     agent.status === 'success' ? 'bg-green-500' :
                                         'bg-gray-500'
-                                }`}></div>
+                                } shadow-xl`}></div>
 
-                            {/* Hint Overlay */}
-                            <div className="absolute inset-0 z-30 opacity-0 group-hover:opacity-100 flex items-center justify-center bg-black/40 backdrop-blur-[2px] rounded-full transition-opacity pointer-events-none">
-                                <span className="text-[8px] font-black text-white uppercase">{isMinimized ? 'Show' : 'Hide'}</span>
+                            {/* View Toggle Hint */}
+                            <div className="absolute inset-0 z-30 opacity-0 group-hover:opacity-100 flex items-center justify-center bg-black/60 backdrop-blur-[4px] rounded-full transition-all duration-300">
+                                <span className="text-[9px] font-black text-white uppercase tracking-tighter">{isMinimized ? 'Max' : 'Min'}</span>
                             </div>
                         </div>
                     </div>
@@ -217,18 +227,16 @@ const ThinkingAgents: React.FC<ThinkingAgentsProps> = ({ agents }) => {
                 {`
                 @keyframes float {
                     0%, 100% { transform: translateY(0); }
-                    50% { transform: translateY(-8px); }
+                    50% { transform: translateY(-10px); }
                 }
                 .animate-float {
-                    animation: float 4s ease-in-out infinite;
+                    animation: float 4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
                 }
                 `}
             </style>
-            <div className="fixed inset-0 pointer-events-none z-[999]">
-                <div className="pointer-events-auto contents">
-                    {renderAgent('director', director, Clapperboard, 'Director', 'bg-brand-red')}
-                    {renderAgent('dop', dop, Camera, 'DOP Assistant', 'bg-blue-600')}
-                </div>
+            <div className="fixed inset-0 pointer-events-none z-[500]">
+                {renderAgent('director', director, Clapperboard, 'Director', 'bg-brand-orange')}
+                {renderAgent('dop', dop, Camera, 'DOP Assistant', 'bg-blue-600')}
             </div>
         </>
     );
