@@ -380,13 +380,16 @@ This applies to EVERY human figure in the scene without ANY exception. If a hand
                         text: `[${refLabel}]: !!! CRITICAL VISUAL DNA ANCHOR !!!
 This is the MANDATORY reference image that defines the EXACT visual style for this scene.
 MATCH PRECISELY:
-- Color grading and palette
-- Lighting direction and intensity
-- Material textures and surface quality
-- Camera angle and composition
-- Atmospheric mood and ambiance
-- Character appearance (if present)
-Use this as the AUTHORITATIVE source for visual consistency. The output MUST look like it belongs in the same film/sequence as this reference.` });
+- Color grading, palette, and lighting atmosphere
+- Material textures (e.g. skin, fabric, surfaces) and render style
+- Character identity and appearance details
+
+IMPORTANT EXCEPTIONS - DEFER TO PROMPT FOR:
+- ACTION and POSE (If text prompt describes a different action, FOLLOW THE TEXT)
+- OBJECT PLACEMENT (If text prompt moves an object, FOLLOW THE TEXT)
+- COMPOSITION (If text prompt changes camera angle, FOLLOW THE TEXT)
+
+Use this image strictly as a "Style & Material" reference, NOT a pixel-perfect layout content constraint.` });
                     parts.push({ inlineData: { data: dnaImgData.data, mimeType: dnaImgData.mimeType } });
                     continuityInstruction += '(DNA REFERENCE ENFORCED) ';
                     console.log('[ImageGen] 🧬 DNA Reference Image injected for visual consistency');
