@@ -278,6 +278,18 @@ const App: React.FC = () => {
     );
 
     // --- Director Chat Hook ---
+    const handleClearAllImages = useCallback(() => {
+        updateStateAndRecord(s => ({
+            ...s,
+            scenes: s.scenes.map(sc => ({
+                ...sc,
+                generatedImage: null,
+                endFrameImage: null,
+                mediaId: null
+            }))
+        }));
+    }, [updateStateAndRecord]);
+
     const { handleCommand: handleDirectorCommand } = useDirectorChat({
         state,
         userApiKey,
@@ -285,7 +297,11 @@ const App: React.FC = () => {
         addProductionLog,
         stopBatchGeneration,
         updateStateAndRecord,
-        handleGenerateAllImages
+        handleGenerateAllImages,
+        addScene,
+        removeScene,
+        insertScene,
+        onClearAllImages: handleClearAllImages
     });
 
 

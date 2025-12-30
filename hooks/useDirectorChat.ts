@@ -11,6 +11,12 @@ interface UseDirectorChatProps {
     stopBatchGeneration: () => void;
     updateStateAndRecord: (updater: (s: ProjectState) => ProjectState) => void;
     handleGenerateAllImages: (specificSceneIds?: string[]) => Promise<void>;
+    // Scene Management
+    addScene: () => void;
+    removeScene: (id: string) => void;
+    insertScene: (index: number) => void;
+    // Clear functions
+    onClearAllImages?: () => void;
 }
 
 export const useDirectorChat = ({
@@ -20,8 +26,13 @@ export const useDirectorChat = ({
     addProductionLog,
     stopBatchGeneration,
     updateStateAndRecord,
-    handleGenerateAllImages
+    handleGenerateAllImages,
+    addScene,
+    removeScene,
+    insertScene,
+    onClearAllImages
 }: UseDirectorChatProps) => {
+
 
 
     const recognizeIntent = useCallback(async (command: string) => {
@@ -43,24 +54,33 @@ INTENTS:
 3. UPDATE_STYLE: Change style for future (ungenerated) scenes.
 4. PROD_Q_AND_A: Answer questions about the script, characters, or production status.
 5. SYNERGY_DIRECTIVE: Give a technical instruction to the DOP.
-6. MATERIAL_INHERITANCE: Sample visual details or materials from one scene and apply to another (e.g. "Dùng chất liệu của cảnh 10 cho cảnh 15").
-7. SYNC_AND_REGENERATE: Fix a scene to match another scene's DNA AND regenerate it (e.g. "Sửa cảnh 2 giống cảnh 1 rồi tạo lại", "Cảnh 5 sai, sync với cảnh 4").
-
+6. MATERIAL_INHERITANCE: Sample visual details or materials from one scene and apply to another.
+7. SYNC_AND_REGENERATE: Fix a scene to match another scene's DNA AND regenerate it.
+8. ADD_SCENE: Add new scene(s) (e.g. "Thêm 3 cảnh mới", "Thêm cảnh").
+9. DELETE_SCENE: Delete specific scene(s) (e.g. "Xóa cảnh 5", "Xóa cảnh 10-15").
+10. INSERT_SCENE: Insert scene at specific position (e.g. "Chèn cảnh sau cảnh 5").
+11. CLEAR_ALL_IMAGES: Clear all generated images (e.g. "Xóa hết ảnh", "Clear ảnh").
+12. UPDATE_SCENE_PROMPT: Edit a specific scene's prompt (e.g. "Sửa prompt cảnh 3 thành...").
 
 
 OUTPUT FORMAT: JSON only
 {
   "intent": "INTENT_NAME",
   "entities": {
-    "range": [start, end], // for REGENERATE_RANGE
+    "range": [start, end], // for REGENERATE_RANGE, DELETE_SCENE
     "sceneIds": ["id1", "id2"], // preferred if identifiable
     "styleInstruction": "string", // for UPDATE_STYLE
     "directive": "string", // for SYNERGY_DIRECTIVE
     "sourceSceneId": "string", // for MATERIAL_INHERITANCE
-    "targetSceneId": "string" // for MATERIAL_INHERITANCE
+    "targetSceneId": "string", // for MATERIAL_INHERITANCE
+    "count": number, // for ADD_SCENE
+    "insertAfter": number, // for INSERT_SCENE (scene number)
+    "sceneNumber": number, // for UPDATE_SCENE_PROMPT
+    "newPrompt": "string" // for UPDATE_SCENE_PROMPT
   },
   "response": "Brief professional acknowledgment in Vietnamese"
 }`;
+
 
 
         try {
@@ -288,6 +308,105 @@ OUTPUT FORMAT: JSON only
                 }
                 break;
 
+            case 'ADD_SCENE':
+                const sceneCount = entities.count || 1;
+                addProductionLog('director', response || `Đang thêm ${sceneCount} cảnh mới...`, 'info');
+                setAgentState('director', 'speaking', `Thêm ${sceneCount} cảnh mới...`, 'Adding Scenes');
+
+                for (let i = 0; i < sceneCount; i++) {
+                    addScene();
+                }
+
+                setAgentState('director', 'success', `Đã thêm ${sceneCount} cảnh mới vào cuối danh sách.`);
+                break;
+
+            case 'DELETE_SCENE':
+                const deleteStart = entities.range?.[0] || entities.sceneNumber;
+                const deleteEnd = entities.range?.[1] || deleteStart;
+
+                if (deleteStart) {
+                    const scenesToDelete = state.scenes.filter(s => {
+                        const num = parseInt(s.sceneNumber);
+                        return num >= deleteStart && num <= deleteEnd;
+                    });
+
+                    if (scenesToDelete.length > 0) {
+                        addProductionLog('director', response || `Đang xóa ${scenesToDelete.length} cảnh...`, 'warning');
+                        setAgentState('director', 'speaking', `Xóa cảnh ${deleteStart}${deleteEnd !== deleteStart ? `-${deleteEnd}` : ''}...`, 'Deleting');
+
+                        scenesToDelete.forEach(scene => removeScene(scene.id));
+
+                        setAgentState('director', 'success', `Đã xóa ${scenesToDelete.length} cảnh thành công.`);
+                    } else {
+                        setAgentState('director', 'error', 'Không tìm thấy cảnh để xóa.');
+                    }
+                } else {
+                    setAgentState('director', 'error', 'Vui lòng chỉ định số cảnh cần xóa.');
+                }
+                break;
+
+            case 'INSERT_SCENE':
+                const insertAfterNum = entities.insertAfter || 0;
+                const insertIndex = state.scenes.findIndex(s => parseInt(s.sceneNumber) === insertAfterNum);
+
+                if (insertIndex !== -1) {
+                    addProductionLog('director', response || `Chèn cảnh mới sau cảnh ${insertAfterNum}...`, 'info');
+                    setAgentState('director', 'speaking', `Chèn cảnh sau cảnh ${insertAfterNum}...`, 'Inserting');
+
+                    insertScene(insertIndex + 1);
+
+                    setAgentState('director', 'success', `Đã chèn cảnh mới sau cảnh ${insertAfterNum}.`);
+                } else {
+                    // If no specific position, add at end
+                    addScene();
+                    setAgentState('director', 'success', 'Đã thêm cảnh mới vào cuối danh sách.');
+                }
+                break;
+
+            case 'CLEAR_ALL_IMAGES':
+                addProductionLog('director', response || 'Đang xóa tất cả ảnh đã tạo...', 'warning');
+                setAgentState('director', 'speaking', 'Xóa tất cả ảnh...', 'Clearing');
+
+                if (onClearAllImages) {
+                    onClearAllImages();
+                } else {
+                    updateStateAndRecord(s => ({
+                        ...s,
+                        scenes: s.scenes.map(scene => ({ ...scene, generatedImage: null }))
+                    }));
+                }
+
+                setAgentState('director', 'success', 'Đã xóa tất cả ảnh. Sẵn sàng tạo lại.');
+                break;
+
+            case 'UPDATE_SCENE_PROMPT':
+                const targetSceneNum = entities.sceneNumber;
+                const newPromptText = entities.newPrompt;
+
+                if (targetSceneNum && newPromptText) {
+                    const sceneToUpdate = state.scenes.find(s => parseInt(s.sceneNumber) === targetSceneNum);
+
+                    if (sceneToUpdate) {
+                        addProductionLog('director', response || `Cập nhật prompt cảnh ${targetSceneNum}...`, 'info');
+                        setAgentState('director', 'speaking', `Sửa prompt cảnh ${targetSceneNum}...`, 'Updating');
+
+                        updateStateAndRecord(s => ({
+                            ...s,
+                            scenes: s.scenes.map(scene =>
+                                scene.id === sceneToUpdate.id
+                                    ? { ...scene, contextDescription: newPromptText, generatedImage: null }
+                                    : scene
+                            )
+                        }));
+
+                        setAgentState('director', 'success', `Đã cập nhật prompt cảnh ${targetSceneNum}. Ảnh cũ đã xóa, sẵn sàng tạo lại.`);
+                    } else {
+                        setAgentState('director', 'error', `Không tìm thấy cảnh ${targetSceneNum}.`);
+                    }
+                } else {
+                    setAgentState('director', 'error', 'Vui lòng chỉ định số cảnh và nội dung prompt mới.');
+                }
+                break;
 
 
             default:
@@ -295,7 +414,7 @@ OUTPUT FORMAT: JSON only
                 setAgentState('director', 'success', response);
                 break;
         }
-    }, [recognizeIntent, addProductionLog, stopBatchGeneration, setAgentState, state.scenes, handleGenerateAllImages, updateStateAndRecord]);
+    }, [recognizeIntent, addProductionLog, stopBatchGeneration, setAgentState, state.scenes, handleGenerateAllImages, updateStateAndRecord, addScene, removeScene, insertScene, onClearAllImages]);
 
     return { handleCommand };
 };
