@@ -216,10 +216,10 @@ INSTRUCTIONS:
 ${refImgData ? "2. Analyze IMAGE 2 (Reference Object/Detail)." : ""}
 3. Interpret the User Command.
 4. Generate a precise Image Generation Prompt that:
-   - Describes the DESIRED OUTPUT image in complete detail.
-   - Explicitly describes elements from IMAGE 1 that must REMAIN (Composition, Pose, Background).
-   - Explicitly describes the NEW elements and their interaction with the scene.
-   - Uses professional cinematic terminology.
+   - STARTS with: "EDIT REQUEST: Keep the exact camera angle, subject pose, and lighting from the source image."
+   - Describes the scene EXACTLY as it is in IMAGE 1 (Locking the base).
+   - Then describes the ADDITION/CHANGE of the object/element (potentially from IMAGE 2).
+   - "Do not reimagine the shot. Do not change the subject's pose. Do not change the camera angle."
 
 OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
 
@@ -310,10 +310,15 @@ This applies to EVERY human figure in the scene without ANY exception. If a hand
             // STYLE & NEGATIVE CONSTRAINTS (Authoritative)
             const isRealistic = effectiveStylePrompt === 'cinematic-realistic' || effectiveStylePrompt === 'vintage-film';
             const negativeStyle = isRealistic ? '!!! STRICT NEGATIVE: NO ANIME, NO CARTOON, NO 2D, NO DRAWING, NO ILLUSTRATION, NO PAINTING, NO CGI-LOOK !!!' : '';
-            const authoritativeStyle = `AUTHORITATIVE STYLE: ${styleInstruction.toUpperCase()}. ${negativeStyle}`;
+            const authoritativeStyle = (baseImage || refinementPrompt)
+                ? "STYLE LOCK: MATCH SOURCE IMAGE."
+                : `AUTHORITATIVE STYLE: ${styleInstruction.toUpperCase()}. ${negativeStyle}`;
 
             // Shot Scale (Angle) is the ABSOLUTE PRIORITY for composition
-            const scaleCmd = anglePrompt ? `SHOT SCALE: ${anglePrompt.toUpperCase()}.` : 'CINEMATIC WIDE SHOT.';
+            // CONSTRAINT: In EDIT MODE (baseImage), we MUST ignore propery-based scale and trust the image.
+            const scaleCmd = (baseImage || refinementPrompt)
+                ? "COMPOSITION LOCK: MATCH SOURCE IMAGE EXACTLY."
+                : (anglePrompt ? `SHOT SCALE: ${anglePrompt.toUpperCase()}.` : 'CINEMATIC WIDE SHOT.');
 
             // NO DRIFT GUARD: Prevent "Chibi" or distortion if style is realistic
             const noDriftGuard = isRealistic ? "!!! MANDATORY CONSISTENCY: Maintain realistic human/object dimensions. NO DISTORTIONS. !!!" : "";
