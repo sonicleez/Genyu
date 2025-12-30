@@ -303,6 +303,30 @@ const UnifiedProductionHub: React.FC<UnifiedProductionHubProps> = ({
                                     </div>
                                 </div>
                             ))}
+
+                            {/* THINKING ANIMATION */}
+                            {(agents.director.status === 'thinking' || agents.dop.status === 'thinking') && (
+                                <div className="flex flex-col gap-1 items-start animate-fade-in-up">
+                                    <div className="flex items-center gap-1.5 px-1">
+                                        <span className={`text-[9px] font-black uppercase tracking-widest ${agents.director.status === 'thinking' ? 'text-purple-400' : 'text-blue-400'}`}>
+                                            {agents.director.status === 'thinking' ? 'Director' : 'DOP'}
+                                        </span>
+                                    </div>
+                                    <div className={`px-4 py-3 rounded-2xl border rounded-tl-none shadow-sm flex items-center gap-2 ${agents.director.status === 'thinking'
+                                            ? 'bg-purple-900/40 border-purple-500/20 text-purple-300'
+                                            : 'bg-blue-900/40 border-blue-500/20 text-blue-300'
+                                        }`}>
+                                        <div className="flex space-x-1">
+                                            <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                            <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                            <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></div>
+                                        </div>
+                                        <span className="text-[10px] font-medium opacity-70">
+                                            {agents.director.status === 'thinking' ? agents.director.currentStage : agents.dop.currentStage}...
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
                             {logs.length === 0 && (
                                 <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-2 opacity-50">
                                     <Command className="w-8 h-8" />
