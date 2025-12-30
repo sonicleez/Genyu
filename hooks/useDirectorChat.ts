@@ -335,9 +335,10 @@ OUTPUT FORMAT: JSON only
 
                     try {
                         const directiveText = entities.directive
-                            ? `4. ADDITIONAL DIRECTIVE (OVERRIDE - CRITICAL): "${entities.directive}". 
-                               - If this asks to MOVE/ADD an OBJECT from Source to Target: Describe the object from Source detailedly and place it in Target as requested.
-                               - If this changes ACTION: Update the Target action logic to match this directive.`
+                            ? `4. ADDITIONAL DIRECTIVE (PRIORITY #1): "${entities.directive}".
+                               - IF ADDING AN OBJECT (e.g. backpack): describe it vividly (color, material, shape) based on SOURCE prompt, and place it exactly where requested in TARGET. 
+                               - MAKE THE OBJECT VISIBLE and CLEAR in the new scene description.
+                               - Example: "On the table sits the weathered leather backpack from the previous scene."`
                             : '';
 
                         const syncPrompt = `As the Director, you need to fix Scene ${tgtScene.sceneNumber} to match Scene ${srcScene.sceneNumber}'s visual DNA.
@@ -345,16 +346,17 @@ OUTPUT FORMAT: JSON only
                         SOURCE SCENE (Reference):
                         "${srcScene.contextDescription}"
                         
-                        TARGET SCENE (Needs fixing):
+                        TARGET SCENE (To be Modified):
                         "${tgtScene.contextDescription}"
                         
                         RULES:
-                        1. Keep the TARGET scene's CORE story (unless Directive overrides it).
-                        2. Inject the SOURCE scene's visual style, materials, lighting, and atmosphere.
-                        3. If Directive mentions specific objects from Source (e.g. "take the backpack"), DESCRIBE that object into the Target prompt exactly.
+                        1. INTEGRATE THE DIRECTIVE FIRST. If asked to add an object, ensure it is mentioned PROMINENTLY in the new description.
+                        2. Keep the TARGET scene's setting/context (e.g. if it's a room with a mirror, keep the room and mirror).
+                        3. Inject the SOURCE scene's visual style (lighting, mood).
+                        4. DO NOT remove the main character unless asked.
                         ${directiveText}
                         
-                        OUTPUT: The corrected complete prompt for the target scene.`;
+                        OUTPUT: The corrected complete prompt for TARGET scene.`;
 
                         const fixedPrompt = await callGeminiText(userApiKey || '', syncPrompt, 'You are an Expert Director.', 'gemini-3-flash-preview', false);
 
