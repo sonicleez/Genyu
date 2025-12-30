@@ -86,8 +86,9 @@ INTENTS:
 4. PROD_Q_AND_A: Answer questions about the script, characters, or production status.
 5. SYNERGY_DIRECTIVE: Give a technical instruction to the DOP (e.g. "cảnh 3 cho medium shot").
 6. MATERIAL_INHERITANCE: Sample visual details or materials from one scene and apply to another.
-7. SYNC_AND_REGENERATE: Fix a scene to match another scene's DNA AND regenerate it.
+7. SYNC_AND_REGENERATE: Fix a scene to match another scene's DNA AND regenerate it, optionally with extra instructions (e.g. "Sửa cảnh 2 giống cảnh 1 nhưng góc toàn", "Cảnh 3 tham chiếu cảnh 1, góc medium").
 8. ADD_SCENE: Add new scene(s) (e.g. "Thêm 3 cảnh mới", "Thêm cảnh").
+
 9. DELETE_SCENE: Delete specific scene(s) (e.g. "Xóa cảnh 5", "Xóa cảnh 10-15").
 10. INSERT_SCENE: Insert scene at specific position (e.g. "Chèn cảnh sau cảnh 5").
 11. CLEAR_ALL_IMAGES: Clear all generated images (e.g. "Xóa hết ảnh", "Clear ảnh").
@@ -333,6 +334,8 @@ OUTPUT FORMAT: JSON only
                     setAgentState('director', 'thinking', 'Đang phân tích và đồng bộ DNA...', 'Sync & Regen');
 
                     try {
+                        const directiveText = entities.directive ? `4. ADDITIONAL DIRECTIVE (OVERRIDE): "${entities.directive}". Apply this change strictly (e.g. change camera angle, add details).` : '';
+
                         const syncPrompt = `As the Director, you need to fix Scene ${tgtScene.sceneNumber} to match Scene ${srcScene.sceneNumber}'s visual DNA.
                         
                         SOURCE SCENE (Reference):
@@ -345,10 +348,12 @@ OUTPUT FORMAT: JSON only
                         1. Keep the TARGET scene's story and actions.
                         2. Inject the SOURCE scene's visual style, materials, lighting, and atmosphere.
                         3. Ensure character descriptions match between scenes.
+                        ${directiveText}
                         
                         OUTPUT: The corrected complete prompt for the target scene.`;
 
                         const fixedPrompt = await callGeminiText(userApiKey || '', syncPrompt, 'You are an Expert Director.', 'gemini-3-flash-preview', false);
+
 
                         // Update prompt and clear image
                         updateStateAndRecord(s => ({
