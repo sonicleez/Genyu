@@ -238,6 +238,9 @@ OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
 
                         if (reasonedPrompt) {
                             console.log('[Reasoning] ✨ Enhanced Prompt:', reasonedPrompt);
+                            // Detect if angle change was requested
+                            const isAngleChange = /zoom|pan|angle|close.?up|wide|medium|long|shot/i.test(reasonedPrompt);
+                            console.log(`[Reasoning] 📐 Angle Change Detected: ${isAngleChange}`);
                             cleanedContext = reasonedPrompt.trim(); // Override context with smart prompt
                             reasonedContext = reasonedPrompt.trim();
                         }
