@@ -34,31 +34,50 @@ export const callGeminiAPI = async (
     apiKey: string,
     prompt: string,
     aspectRatio: string,
-    imageModel: string = 'gemini-2.5-flash-image',
+    imageModel: string = 'gemini-3-pro-image-preview',
     imageContext: string | null = null
 ): Promise<string | null> => {
     const trimmedKey = apiKey?.trim();
-    if (!trimmedKey) return null;
+    if (!trimmedKey) {
+        console.error('[Gemini Gen] ❌ No API key provided');
+        return null;
+    }
 
-    console.log('[Gemini Gen] 🎨 Calling Gemini API...');
+    // Validate and map model names
+    let finalModel = imageModel;
+    if (imageModel === 'gemini-2.0-flash') {
+        finalModel = 'gemini-2.0-flash-preview-image-generation';
+    }
+
+    console.log('[Gemini Gen] 🎨 Calling Gemini API...', {
+        model: finalModel,
+        aspectRatio,
+        hasContext: !!imageContext,
+        promptLength: prompt.length
+    });
+
     try {
         const ai = new GoogleGenAI({ apiKey: trimmedKey });
         const parts: any[] = [];
 
         if (imageContext) {
-            console.log('[Gemini Gen] 📎 Using Reference Image...');
+            console.log('[Gemini Gen] 📎 Processing Reference Image...');
             const contextData = await safeGetImageData(imageContext);
             if (contextData) {
+                console.log('[Gemini Gen] ✅ Reference image loaded:', contextData.mimeType);
                 parts.push({ inlineData: { data: contextData.data, mimeType: contextData.mimeType } });
+            } else {
+                console.error('[Gemini Gen] ❌ Failed to load reference image!');
             }
         }
 
         parts.push({ text: prompt });
 
         const response = await ai.models.generateContent({
-            model: imageModel === 'gemini-2.0-flash' ? 'gemini-2.5-flash-image' : imageModel,
+            model: finalModel,
             contents: { parts: parts },
             config: {
+                responseModalities: ['IMAGE'],
                 imageConfig: {
                     aspectRatio: aspectRatio
                 }
@@ -67,11 +86,14 @@ export const callGeminiAPI = async (
 
         const imagePart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
         if (imagePart?.inlineData) {
+            console.log('[Gemini Gen] ✅ Image generated successfully!');
             return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
         }
+
+        console.error('[Gemini Gen] ❌ No image in response:', response);
         return null;
     } catch (err: any) {
-        console.error('[Gemini Gen] ❌ Error:', err.message);
+        console.error('[Gemini Gen] ❌ Error:', err.message, err);
         return null;
     }
 };
