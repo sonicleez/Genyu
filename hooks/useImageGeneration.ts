@@ -47,6 +47,56 @@ export function useImageGeneration(
     // Generation Lock: Track which scenes are currently being generated to prevent duplicates
     const generatingSceneIdsRef = useRef<Set<string>>(new Set());
 
+    /**
+     * Storyboard Mode: Find the best cascade reference image for visual consistency
+     * - Looks for the nearest scene with an image in the SAME SceneGroup
+     * - Falls back to group's conceptImage if no scene has image
+     * - Returns undefined if no reference available (first scene in group)
+     */
+    const findCascadeReference = useCallback((
+        currentScene: Scene,
+        currentState: ProjectState
+    ): string | undefined => {
+        if (!currentScene.groupId) return undefined;
+
+        // 1. Get ALL scenes in same group that have generated images
+        const sameGroupScenes = currentState.scenes.filter(
+            s => s.groupId === currentScene.groupId && s.generatedImage && s.id !== currentScene.id
+        );
+
+        if (sameGroupScenes.length === 0) {
+            // No scenes with images in this group - try conceptImage
+            const group = currentState.sceneGroups?.find(g => g.id === currentScene.groupId);
+            if (group?.conceptImage) {
+                console.log(`[Cascade] Using group conceptImage as reference for scene ${currentScene.sceneNumber}`);
+                return group.conceptImage;
+            }
+            return undefined;
+        }
+
+        // 2. Find nearest scene BEFORE current (by sceneNumber)
+        const currentNum = parseInt(currentScene.sceneNumber);
+        const beforeScenes = sameGroupScenes
+            .filter(s => parseInt(s.sceneNumber) < currentNum)
+            .sort((a, b) => parseInt(b.sceneNumber) - parseInt(a.sceneNumber));
+
+        if (beforeScenes.length > 0) {
+            console.log(`[Cascade] Scene ${currentScene.sceneNumber} referencing Scene ${beforeScenes[0].sceneNumber} for consistency`);
+            return beforeScenes[0].generatedImage!;
+        }
+
+        // 3. If no scene before, check if any scene AFTER has image (edge case: regenerating earlier scene)
+        const afterScenes = sameGroupScenes
+            .filter(s => parseInt(s.sceneNumber) > currentNum)
+            .sort((a, b) => parseInt(a.sceneNumber) - parseInt(b.sceneNumber));
+
+        if (afterScenes.length > 0) {
+            console.log(`[Cascade] Scene ${currentScene.sceneNumber} referencing Scene ${afterScenes[0].sceneNumber} (forward ref)`);
+            return afterScenes[0].generatedImage!;
+        }
+
+        return undefined;
+    }, []);
 
     const stopBatchGeneration = useCallback(() => {
         if (isBatchGenerating) {
@@ -978,8 +1028,12 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
 
                 setAgentState('director', 'speaking', `Đang chỉ đạo Phân cảnh ${scene.sceneNumber}...`);
 
+                // STORYBOARD MODE: Find cascade reference from same group for visual consistency
+                const cascadeRef = findCascadeReference(scene, stateRef.current);
+
                 // Check if this scene has a specific DNA reference image (from Reference Map OR Scene Attributes)
-                const dnaReference = (referenceMap && referenceMap[scene.id]) || scene.referenceImage || undefined;
+                // Priority: explicit referenceMap > scene.referenceImage > cascadeReference
+                const dnaReference = (referenceMap && referenceMap[scene.id]) || scene.referenceImage || cascadeRef || undefined;
 
                 // Check if scene ALREADY has an image -> Treat as Base Image for Editing
                 // PRIORITIZE explicitly passed baseImageMap
