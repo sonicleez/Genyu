@@ -560,40 +560,23 @@ INSTRUCTION: Using the provided target image as the base, add ${objectDesc} (vis
                     if (entities.visualDirective) {
                         setAgentState('director', 'speaking', `Đang tạo cảnh mới: ${entities.visualDirective}...`, 'Generating');
 
-                        // Wait for React state to sync using polling instead of fixed timeout
-                        // This ensures the scene exists before we try to generate
-                        const waitForScene = async (sceneId: string, maxWait = 2000): Promise<boolean> => {
-                            const startWait = Date.now();
-                            while (Date.now() - startWait < maxWait) {
-                                const scenes = state.scenes;
-                                const found = scenes.find(s => s.id === sceneId);
-                                if (found) {
-                                    console.log(`[Director] Scene ${sceneId} found in state after ${Date.now() - startWait}ms`);
-                                    return true;
-                                }
-                                await new Promise(r => setTimeout(r, 50)); // Poll every 50ms
-                            }
-                            console.warn(`[Director] Timeout waiting for scene ${sceneId}`);
-                            return false;
-                        };
+                        // NOTE: insertScene returns newId synchronously. The scene exists in state immediately
+                        // after insertScene() returns (it calls updateStateAndRecord internally).
+                        // We use a short delay to allow React to flush the state update to DOM/hooks.
+                        // Previous polling approach had a stale closure bug (state.scenes was captured at render time).
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        console.log(`[Director] Waited 300ms for React state flush, proceeding with generation for scene ${newId}`);
 
-                        // Wait then generate
-                        const sceneReady = await waitForScene(newId);
-                        if (sceneReady) {
-                            console.log(`[Director] Starting generation for newly inserted scene ${newId}`);
-
-                            // Pass as Base Image to maintain subject identity
-                            // Works for both angle change (Reasoning controls angle) and style continuity
-                            let baseMap: { [key: string]: string } | undefined;
-                            if (entities.referencePrevious && prevSceneImage) {
-                                baseMap = { [newId]: prevSceneImage };
-                                console.log('[Director] Passing Previous Image as Base Image for Continuity Insert');
-                            }
-
-                            await handleGenerateAllImages([newId], undefined, baseMap);
-                        } else {
-                            setAgentState('director', 'error', 'Không thể đồng bộ cảnh mới. Vui lòng thử lại.');
+                        // Pass as Base Image to maintain subject identity
+                        // Works for both angle change (Reasoning controls angle) and style continuity
+                        let baseMap: { [key: string]: string } | undefined;
+                        if (entities.referencePrevious && prevSceneImage) {
+                            baseMap = { [newId]: prevSceneImage };
+                            console.log('[Director] Passing Previous Image as Base Image for Continuity Insert');
                         }
+
+                        await handleGenerateAllImages([newId], undefined, baseMap);
+                        setAgentState('director', 'success', `Đã tạo xong cảnh mới!`);
                     } else {
                         setAgentState('director', 'success', `Đã chèn cảnh mới sau cảnh ${insertAfterNum}.`);
                     }
