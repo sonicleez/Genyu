@@ -1110,11 +1110,10 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
 
                             const ai = new GoogleGenAI({ apiKey: userApiKey! });
 
-                            // Determine storyboard aspect ratio based on panel count
-                            // 4 panels (2x2): use 1:1 square for equal quadrants
-                            // 2-3 panels (1xN): use 16:9 horizontal strip
-                            const storyboardAspect = batch.length === 4 ? '1:1' : '16:9';
-                            console.log(`[BatchGen] Storyboard aspect ratio: ${storyboardAspect} for ${batch.length} panels`);
+                            // Use 16:9 storyboard so each panel after 2x2 split is also 16:9
+                            // 16:9 storyboard ÷ 2x2 = 16:9 per panel (e.g. 1920x1080 ÷ 4 = 960x540)
+                            const storyboardAspect = '16:9';
+                            console.log(`[BatchGen] Storyboard: 16:9 ratio, ${batch.length} panels → each panel will be 16:9`);
 
                             const response = await ai.models.generateContent({
                                 model: stateRef.current.imageModel || 'gemini-2.0-flash-exp-image-generation',
