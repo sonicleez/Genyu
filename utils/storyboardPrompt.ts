@@ -38,9 +38,21 @@ export async function buildStoryboardPromptWithRefs(
 
     // 2. CHARACTER REFERENCES - Inject face/body images
     const allCharacterIds = new Set<string>();
-    scenes.forEach(s => s.characterIds?.forEach(id => allCharacterIds.add(id)));
-    const selectedChars = state.characters.filter(c => allCharacterIds.has(c.id));
+    scenes.forEach(s => {
+        console.log(`[Storyboard] Scene ${s.sceneNumber} characterIds:`, s.characterIds);
+        s.characterIds?.forEach(id => allCharacterIds.add(id));
+    });
 
+    console.log('[Storyboard] All character IDs from batch:', Array.from(allCharacterIds));
+    const selectedChars = state.characters.filter(c => allCharacterIds.has(c.id));
+    console.log('[Storyboard] Selected characters:', selectedChars.map(c => ({
+        name: c.name,
+        hasFace: !!c.faceImage,
+        hasBody: !!c.bodyImage,
+        hasMaster: !!c.masterImage
+    })));
+
+    let charImagesInjected = 0;
     for (const char of selectedChars) {
         if (char.faceImage) {
             const imgData = await safeGetImageData(char.faceImage);
@@ -49,6 +61,10 @@ export async function buildStoryboardPromptWithRefs(
                     text: `[CHARACTER: ${char.name}] - This is the ONLY valid face for ${char.name}. MUST appear identical in ALL panels.`
                 });
                 parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
+                charImagesInjected++;
+                console.log(`[Storyboard] ✅ Injected face image for ${char.name}`);
+            } else {
+                console.warn(`[Storyboard] ⚠️ Failed to load face image for ${char.name}`);
             }
         }
         if (char.bodyImage || char.masterImage) {
@@ -58,8 +74,16 @@ export async function buildStoryboardPromptWithRefs(
                     text: `[COSTUME: ${char.name}] - Match clothing, colors, and outfit exactly in ALL panels.`
                 });
                 parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
+                charImagesInjected++;
+                console.log(`[Storyboard] ✅ Injected body/master image for ${char.name}`);
             }
         }
+    }
+
+    if (charImagesInjected === 0 && selectedChars.length > 0) {
+        console.warn('[Storyboard] ⚠️ Characters found but NO images available. Generate Face/Body sheets first!');
+    } else if (selectedChars.length === 0) {
+        console.warn('[Storyboard] ⚠️ No characters assigned to these scenes. Add characters to scenes first!');
     }
 
     // 3. CUSTOM STYLE IMAGE
