@@ -50,6 +50,8 @@ interface ScenesMapSectionProps {
     onInsertAngles?: (sceneId: string, selections: { value: string; customPrompt?: string }[], sourceImage: string) => void;
     onExpandScene?: (sceneId: string) => void;   // [New]
     isExpandingSequence?: boolean;               // [New]
+    scriptLanguage?: string;
+    customScriptLanguage?: string;
 }
 
 export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
@@ -95,7 +97,9 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
     analyzeRaccord,
     suggestNextShot,
     onExpandScene,      // [New]
-    isExpandingSequence // [New]
+    isExpandingSequence, // [New]
+    scriptLanguage,
+    customScriptLanguage
 }) => {
     const [collapsedGroups, setCollapsedGroups] = React.useState<Record<string, boolean>>({});
     const [activeGroupMenu, setActiveGroupMenu] = React.useState<string | null>(null);
@@ -691,6 +695,8 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                                             onInsertAngles={onInsertAngles}
                                             onExpandScene={onExpandScene}          // [New]
                                             isExpandingSequence={isExpandingSequence} // [New]
+                                            scriptLanguage={scriptLanguage}
+                                            customScriptLanguage={customScriptLanguage}
                                         />
 
                                         {/* Last Insert Button */}

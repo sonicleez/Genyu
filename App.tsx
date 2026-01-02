@@ -896,6 +896,8 @@ const App: React.FC = () => {
                                         onInsertAngles={handleInsertAngles}
                                         onExpandScene={handleExpandScene}
                                         isExpandingSequence={isSequenceExpanding}
+                                        scriptLanguage={state.scriptLanguage}
+                                        customScriptLanguage={state.customScriptLanguage}
                                     />
                                 </div>
 

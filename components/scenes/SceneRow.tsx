@@ -55,6 +55,8 @@ export interface SceneRowProps {
     onInsertAngles?: (sceneId: string, selections: { value: string; customPrompt?: string }[], sourceImage: string) => void;
     onExpandScene?: (sceneId: string) => void;
     isExpandingSequence?: boolean;
+    scriptLanguage?: string; // 'vietnamese' | 'language1' | 'custom'
+    customScriptLanguage?: string;
 }
 
 export const SceneRow: React.FC<SceneRowProps> = ({
@@ -65,13 +67,16 @@ export const SceneRow: React.FC<SceneRowProps> = ({
     onCopyPreviousStyle,
     onInsertAngles,
     onExpandScene,
-    isExpandingSequence
+    isExpandingSequence,
+    scriptLanguage = 'vietnamese',
+    customScriptLanguage
 }) => {
     const endFrameInputRef = useRef<HTMLInputElement>(null);
     const [showAnglesDropdown, setShowAnglesDropdown] = useState(false);
     const [showScenePicker, setShowScenePicker] = useState(false);
     const [selectedAngles, setSelectedAngles] = useState<string[]>([]);
     const [customAnglePrompt, setCustomAnglePrompt] = useState('');
+    const [showSecondaryLang, setShowSecondaryLang] = useState(false);
 
 
     const handleEndFrameUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,22 +175,42 @@ export const SceneRow: React.FC<SceneRowProps> = ({
                         )}
                     </div>
                 )}
-                <ExpandableTextarea
-                    value={scene.language1}
-                    onChange={(val) => updateScene(scene.id, { language1: val })}
-                    placeholder="Script (Lang 1)..."
-                    rows={scene.voiceOverText ? 2 : 3}
-                    className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-gray-300 focus:border-green-500 resize-none"
-                    title="Script (Language 1)"
-                />
-                <ExpandableTextarea
-                    value={scene.vietnamese}
-                    onChange={(val) => updateScene(scene.id, { vietnamese: val })}
-                    placeholder="Lời thoại (Việt)..."
-                    rows={scene.voiceOverText ? 2 : 3}
-                    className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white focus:border-green-500 resize-none"
-                    title="Lời thoại Tiếng Việt"
-                />
+                {/* Primary Script Field - Dynamic based on scriptLanguage */}
+                <div className="relative">
+                    <ExpandableTextarea
+                        value={scriptLanguage === 'vietnamese' ? scene.vietnamese : scene.language1}
+                        onChange={(val) => updateScene(scene.id, scriptLanguage === 'vietnamese' ? { vietnamese: val } : { language1: val })}
+                        placeholder={`Script (${scriptLanguage === 'vietnamese' ? 'Việt' : scriptLanguage === 'custom' ? (customScriptLanguage || 'Custom') : 'EN'})...`}
+                        rows={scene.voiceOverText ? 2 : 3}
+                        className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white focus:border-green-500 resize-none"
+                        title={scriptLanguage === 'vietnamese' ? 'Lời thoại Tiếng Việt' : scriptLanguage === 'custom' ? (customScriptLanguage || 'Custom Language') : 'English Script'}
+                    />
+                    <div className="absolute -top-2 right-2 flex gap-1">
+                        <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${scriptLanguage === 'vietnamese' ? 'bg-red-500/20 text-red-400' : scriptLanguage === 'custom' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                            {scriptLanguage === 'vietnamese' ? '🇻🇳' : scriptLanguage === 'custom' ? '🌐' : '🇺🇸'} {scriptLanguage === 'custom' ? (customScriptLanguage || 'Custom') : (scriptLanguage === 'vietnamese' ? 'VN' : 'EN')}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Toggle Secondary Language */}
+                <button
+                    onClick={() => setShowSecondaryLang(!showSecondaryLang)}
+                    className="text-[9px] text-gray-500 hover:text-brand-orange flex items-center gap-1 py-0.5"
+                >
+                    {showSecondaryLang ? '− Ẩn' : '+'} {scriptLanguage === 'vietnamese' ? 'English' : 'Tiếng Việt'}
+                </button>
+
+                {/* Secondary Script Field (hidden by default) */}
+                {showSecondaryLang && (
+                    <ExpandableTextarea
+                        value={scriptLanguage === 'vietnamese' ? scene.language1 : scene.vietnamese}
+                        onChange={(val) => updateScene(scene.id, scriptLanguage === 'vietnamese' ? { language1: val } : { vietnamese: val })}
+                        placeholder={scriptLanguage === 'vietnamese' ? 'English script...' : 'Lời thoại (Việt)...'}
+                        rows={2}
+                        className="w-full bg-gray-900/50 border border-gray-700/50 rounded p-2 text-xs text-gray-400 focus:border-green-500 resize-none"
+                        title={scriptLanguage === 'vietnamese' ? 'English Script (Secondary)' : 'Vietnamese (Secondary)'}
+                    />
+                )}
             </div>
 
             {/* Context + Cinematography */}
