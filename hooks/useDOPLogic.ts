@@ -246,7 +246,11 @@ CHECK FOR:
    - Check if the Shot Type changed (e.g. Wide -> Close Up).
    - If changed to Close Up/Interior, does the background logically zoom in or change?
    - ERROR: If prompt says "Interior Shop" but image still shows "Wide City Street" background from previous shot.
-   - ERROR: Floating objects (counters, doors) in open space without walls.${mannequinCheck}
+   - ERROR: Floating objects (counters, doors) in open space without walls.
+6. STATIC BACKGROUND (CRITICAL):
+   - Check if the background is EXACTLY the same as the previous shot (pixel-perfect match of clouds, trees, texture).
+   - If subjects are moving or time is passing, the background MUST shift slightly or change perspective.
+   - ERROR: If background looks like a static wallpaper behind different characters.${mannequinCheck}
 
 RESPOND IN JSON ONLY:
 {

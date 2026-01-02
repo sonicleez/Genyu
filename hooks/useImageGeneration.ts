@@ -1243,6 +1243,11 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                                     if (e.type === 'spatial' || desc.includes('scale') || desc.includes('perspective') || desc.includes('floating')) {
                                         negativeConstraints.push('same background', 'floating furniture', 'double exposure', 'collage', 'surreal', 'bad perspective');
                                     }
+                                    if (desc.includes('static background') || desc.includes('identical') || desc.includes('wallpaper')) {
+                                        negativeConstraints.push('static background', 'identical composition', 'same pixels', 'exact match', 'repetitive');
+                                        // JITTER FIX: Force camera movement
+                                        enhancedCorrection += ' (CAMERA MOVEMENT: Shift angle slightly! Dynamic perspective change! Do not reuse exact background pixels!)';
+                                    }
                                 });
                                 const negativePrompt = negativeConstraints.length > 0
                                     ? `(${[...new Set(negativeConstraints)].join(', ')})`
