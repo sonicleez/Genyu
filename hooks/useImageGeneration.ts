@@ -170,7 +170,8 @@ export function useImageGeneration(
         refinementPrompt?: string,
         fromManual: boolean = false,
         referenceImage?: string,
-        baseImage?: string // NEW: Optional base image for Img2Img editing
+        baseImage?: string, // NEW: Optional base image for Img2Img editing
+        negativePrompt?: string // NEW: Negative constraints for DOP retries
     ) => {
         const currentState = stateRef.current;
         const currentSceneIndex = currentState.scenes.findIndex(s => s.id === sceneId);
@@ -518,6 +519,10 @@ This applies to EVERY human figure in the scene without ANY exception. If a hand
 
             if (refinementPrompt) {
                 finalImagePrompt = `REFINEMENT: ${refinementPrompt}. BASE PROMPT: ${finalImagePrompt}`;
+            }
+
+            if (negativePrompt) {
+                finalImagePrompt = `${finalImagePrompt} NEGATIVE CONSTRAINTS (AVOID THESE): ${negativePrompt}`;
             }
 
             // --- 5. CONTINUITY & MULTI-IMAGE REFERENCES ---
@@ -1221,7 +1226,26 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                                 await new Promise(r => setTimeout(r, 500));
 
                                 console.log('[DOP] Auto-regenerating with correction:', enhancedCorrection);
-                                await performImageGeneration(scene.id, enhancedCorrection);
+
+                                // Construct Negative Prompt based on specific errors
+                                const negativeConstraints: string[] = [];
+                                lastValidation.errors.forEach(e => {
+                                    const desc = e.description.toLowerCase();
+                                    if (e.type === 'character' || desc.includes('face') || desc.includes('person')) {
+                                        negativeConstraints.push('wrong person', 'different face', 'extra people', 'ugly face', 'distorted face');
+                                    }
+                                    if (e.type === 'prop' || desc.includes('missing')) {
+                                        negativeConstraints.push('missing object', 'floating objects', 'bad hands', 'mutated');
+                                    }
+                                    if (e.type === 'lighting') {
+                                        negativeConstraints.push('bad lighting', 'wrong exposure', 'dark image');
+                                    }
+                                });
+                                const negativePrompt = negativeConstraints.length > 0
+                                    ? `(${[...new Set(negativeConstraints)].join(', ')})`
+                                    : undefined;
+
+                                await performImageGeneration(scene.id, enhancedCorrection, false, undefined, undefined, negativePrompt);
 
                                 // Re-validate
                                 const reUpdatedState = stateRef.current;

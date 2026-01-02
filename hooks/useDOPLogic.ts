@@ -239,8 +239,8 @@ ${isMannequinMode ? 'STYLE: MANNEQUIN MODE ENABLED - All humans must be smooth p
 
 CHECK FOR:
 1. PROP CONTINUITY: Are props that should appear actually visible? Check position consistency (same hand, same table position).
-2. CHARACTER IDENTITY: Do faces match between shots? Same costume?
-3. LIGHTING: Is the lighting direction and color temperature consistent?
+2. CHARACTER IDENTITY: Do faces match between shots? Same costume? (CRITICAL)
+3. LIGHTING (Relaxed): Is the general lighting direction consistent? Ignore minor mood/exposure shifts. Only report CRITICAL failures (e.g. Day vs Night).
 4. SPATIAL: Are background elements consistent (furniture, walls, etc.)?${mannequinCheck}
 
 RESPOND IN JSON ONLY:
@@ -340,11 +340,11 @@ RESPOND IN JSON ONLY:
             }
         }
 
-        // Decision logic
-        if (unfixable.length > 0 && fixable.length === 0) {
+        // Decision logic - FAIL FAST STRATEGY
+        if (unfixable.length > 0) {
+            // If ANY unfixable error (identity/face/etc) is present, STOP immediately.
+            // Don't waste credits trying to fix mixed errors if the main character is wrong.
             return { fixable, unfixable, decision: 'skip' };
-        } else if (unfixable.length > 0) {
-            return { fixable, unfixable, decision: 'try_once' };
         } else if (fixable.length > 0) {
             return { fixable, unfixable, decision: 'retry' };
         }
