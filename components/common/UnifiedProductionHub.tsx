@@ -234,7 +234,7 @@ const UnifiedProductionHub: React.FC<UnifiedProductionHubProps> = ({
                     <div className="flex items-center gap-1 no-drag">
                         {/* Quick Director Picker */}
                         {onDirectorChange && (
-                            <div className="relative">
+                            <>
                                 <button
                                     onClick={() => setShowDirectorPicker(!showDirectorPicker)}
                                     aria-label="Change Director"
@@ -242,41 +242,51 @@ const UnifiedProductionHub: React.FC<UnifiedProductionHubProps> = ({
                                     className="p-1.5 rounded-lg hover:bg-amber-500/20 transition-colors text-slate-400 hover:text-amber-400 flex items-center gap-1"
                                 >
                                     <Film className="w-4 h-4" />
-                                    {activeDirectorId && (
-                                        <span className="text-[9px] font-bold text-amber-400 uppercase max-w-[40px] truncate">
-                                            {Object.values(DIRECTOR_PRESETS).flat().find(d => d.id === activeDirectorId)?.name.split(' ')[0] || ''}
-                                        </span>
-                                    )}
                                 </button>
 
-                                {/* Director Dropdown */}
+                                {/* Director Dropdown (Portal-like positioning) */}
                                 {showDirectorPicker && (
-                                    <div className="absolute right-0 top-full mt-2 w-48 bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
-                                        <div className="max-h-64 overflow-y-auto py-1">
-                                            {Object.entries(DIRECTOR_PRESETS).map(([category, directors]) => (
-                                                <div key={category}>
-                                                    <div className="text-[9px] text-slate-500 uppercase tracking-wider px-3 py-1.5 bg-white/5">{category}</div>
-                                                    {directors.map(d => (
-                                                        <button
-                                                            key={d.id}
-                                                            onClick={() => {
-                                                                onDirectorChange(d.id);
-                                                                setShowDirectorPicker(false);
-                                                            }}
-                                                            className={`w-full text-left px-3 py-2 text-xs transition-colors ${d.id === activeDirectorId
-                                                                    ? 'bg-amber-500/20 text-amber-300'
+                                    <>
+                                        {/* Backdrop to close on click outside */}
+                                        <div
+                                            className="fixed inset-0 z-[9998]"
+                                            onClick={() => setShowDirectorPicker(false)}
+                                        />
+                                        <div className="fixed z-[9999] w-56 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden"
+                                            style={{
+                                                top: position.y + 60,
+                                                left: Math.min(position.x, window.innerWidth - 240)
+                                            }}
+                                        >
+                                            <div className="px-3 py-2 border-b border-white/10 bg-amber-500/10">
+                                                <span className="text-xs font-bold text-amber-400 uppercase">🎬 Quick Director</span>
+                                            </div>
+                                            <div className="max-h-64 overflow-y-auto py-1">
+                                                {Object.entries(DIRECTOR_PRESETS).map(([category, directors]) => (
+                                                    <div key={category}>
+                                                        <div className="text-[9px] text-slate-500 uppercase tracking-wider px-3 py-1.5 bg-white/5">{category}</div>
+                                                        {directors.map(d => (
+                                                            <button
+                                                                key={d.id}
+                                                                onClick={() => {
+                                                                    onDirectorChange(d.id);
+                                                                    setShowDirectorPicker(false);
+                                                                }}
+                                                                className={`w-full text-left px-3 py-2 text-xs transition-colors ${d.id === activeDirectorId
+                                                                    ? 'bg-amber-500/20 text-amber-300 font-medium'
                                                                     : 'hover:bg-white/5 text-slate-300'
-                                                                }`}
-                                                        >
-                                                            {d.name}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            ))}
+                                                                    }`}
+                                                            >
+                                                                {d.name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
+                                    </>
                                 )}
-                            </div>
+                            </>
                         )}
 
                         {/* Clear Chat Button */}
