@@ -223,6 +223,10 @@ export function useSceneLogic(
                 continuityReferenceGroupId: g.continuityReferenceGroupId ? (groupMap[g.continuityReferenceGroupId] || g.continuityReferenceGroupId) : undefined
             }));
 
+            // Determine which field to use based on scriptLanguage setting
+            const scriptContent = (sc: any) => sc.voiceover || (sc.dialogues?.[0]?.line) || '';
+            const useVietnameseField = s.scriptLanguage === 'vietnamese';
+
             const newScenes: Scene[] = scenes.map((sc: any) => ({
                 id: generateId(),
                 sceneNumber: sc.scene_number,
@@ -239,8 +243,9 @@ export function useSceneLogic(
                 veoPrompt: '',
                 isGenerating: false,
                 error: null,
-                language1: '',
-                vietnamese: sc.voiceover || (sc.dialogues?.[0]?.line) || ''
+                // Assign script to correct field based on scriptLanguage setting
+                language1: useVietnameseField ? '' : scriptContent(sc),
+                vietnamese: useVietnameseField ? scriptContent(sc) : ''
             }));
 
             return {
