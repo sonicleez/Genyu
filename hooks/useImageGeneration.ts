@@ -1017,7 +1017,15 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             const modelToUse = currentState.imageModel || 'gemini-3-pro-image-preview';
             let promptToSend = finalImagePrompt;
 
-            if (needsNormalization(modelToUse)) {
+            // Debug: Check if model is correctly detected as gemini type
+            const shouldNormalize = needsNormalization(modelToUse);
+            console.log('[ImageGen] Model check:', modelToUse, '| Needs normalization:', shouldNormalize);
+
+            if (!shouldNormalize && addProductionLog) {
+                addProductionLog('dop', `🟢 ${modelToUse} hỗ trợ tiếng Việt - không cần dịch`, 'info', 'skip_normalize');
+            }
+
+            if (shouldNormalize) {
                 // Check if Vietnamese is present - use async version for translation
                 const hasVietnamese = containsVietnamese(finalImagePrompt);
 
