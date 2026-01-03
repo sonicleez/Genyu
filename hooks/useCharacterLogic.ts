@@ -4,7 +4,7 @@ import { ProjectState, Character } from '../types';
 import { generateId } from '../utils/helpers';
 import { GLOBAL_STYLES, CHARACTER_STYLES } from '../constants/presets';
 import { getCharacterStyleById } from '../constants/characterStyles';
-import { callGeminiAPI } from '../utils/geminiUtils';
+import { callGeminiAPI, callCharacterImageAPI } from '../utils/geminiUtils';
 import { uploadImageToSupabase, syncUserStatsToCloud } from '../utils/storageUtils';
 
 export function useCharacterLogic(
@@ -359,9 +359,14 @@ ${charStyle.promptInjection.negative}
                 hasCharStylePreset: !!characterStyleInstruction
             });
 
+            // Prepare Gommo credentials from state
+            const gommoCredentials = state.gommoDomain && state.gommoAccessToken
+                ? { domain: state.gommoDomain, accessToken: state.gommoAccessToken }
+                : undefined;
+
             let [faceUrl, bodyUrl] = await Promise.all([
-                callGeminiAPI(apiKey, facePrompt, "1:1", model, image),
-                callGeminiAPI(apiKey, bodyPrompt, "9:16", model, image),
+                callCharacterImageAPI(apiKey, facePrompt, "1:1", model, image, gommoCredentials),
+                callCharacterImageAPI(apiKey, bodyPrompt, "9:16", model, image, gommoCredentials),
             ]);
 
             console.log('[Lora Gen] Generation results:', {
@@ -428,9 +433,14 @@ ${charStyle.promptInjection.negative}
 
             const model = state.imageModel || 'gemini-3-pro-image-preview';
 
+            // Prepare Gommo credentials from state
+            const gommoCredentials = state.gommoDomain && state.gommoAccessToken
+                ? { domain: state.gommoDomain, accessToken: state.gommoAccessToken }
+                : undefined;
+
             let [faceUrl, bodyUrl] = await Promise.all([
-                callGeminiAPI(apiKey, facePrompt, "1:1", model, char.masterImage),
-                callGeminiAPI(apiKey, bodyPrompt, "9:16", model, char.masterImage),
+                callCharacterImageAPI(apiKey, facePrompt, "1:1", model, char.masterImage, gommoCredentials),
+                callCharacterImageAPI(apiKey, bodyPrompt, "9:16", model, char.masterImage, gommoCredentials),
             ]);
 
             if (userId) {
