@@ -46,6 +46,22 @@ export interface GommoAccountInfo {
     };
 }
 
+/**
+ * Gommo AI Model definition from listModels API
+ */
+export interface GommoModel {
+    id_base: string;
+    name: string;
+    description?: string;
+    server: string;
+    model: string;
+    ratios?: Array<{ name: string; type: string }>;
+    resolutions?: Array<{ name: string; type: string }>;
+    price?: number;
+    startText?: boolean;
+    startImage?: boolean;
+}
+
 const GOMMO_ENDPOINTS = {
     createImage: 'https://api.gommo.net/ai/generateImage',
     checkImageStatus: 'https://api.gommo.net/ai/image',
@@ -142,6 +158,19 @@ export class GommoAI {
     async getCredits(): Promise<number> {
         const info = await this.getAccountInfo();
         return info.balancesInfo.credits_ai || 0;
+    }
+
+    /**
+     * Get list of available AI models
+     * @param type - 'image', 'video', or 'tts'
+     */
+    async listModels(type: 'image' | 'video' | 'tts' = 'image'): Promise<GommoModel[]> {
+        const result = await this.request<{ data: GommoModel[]; runtime: number }>(
+            GOMMO_ENDPOINTS.listModels,
+            { type }
+        );
+        console.log(`[Gommo AI] Found ${result.data?.length || 0} ${type} models`);
+        return result.data || [];
     }
 
     /**
