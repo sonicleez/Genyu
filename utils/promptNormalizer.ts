@@ -25,28 +25,31 @@ export type ModelType =
 // Detect model type from model ID
 // Note: Gemini-based models (gemini, banana_pro, imagen via google) support Vietnamese natively
 export function detectModelType(modelId: string): ModelType {
+    // Convert to lowercase for case-insensitive matching
+    const id = modelId.toLowerCase();
+
     // Gemini direct
-    if (modelId.includes('gemini')) return 'gemini';
+    if (id.includes('gemini')) return 'gemini';
 
     // Google Nano Banana Pro (Gemini-based) - supports Vietnamese!
-    if (modelId.includes('banana') || modelId.includes('google_nano')) return 'gemini';
+    if (id.includes('banana') || id.includes('google_nano')) return 'gemini';
 
     // Google Imagen via Gommo - also Gemini-based, supports Vietnamese
-    if (modelId.includes('google_image_gen')) return 'gemini';
+    if (id.includes('google_image_gen')) return 'gemini';
 
     // Non-Google models - need translation
-    if (modelId.includes('midjourney')) return 'midjourney';
-    if (modelId.includes('seedream')) return 'seedream';
-    if (modelId.includes('kling') || modelId.includes('colors') || modelId === 'o1') return 'kling';
-    if (modelId.includes('dreamina')) return 'dreamina';
-    if (modelId.includes('z_image')) return 'z_image';
-    if (modelId.includes('hailuo')) return 'hailuo';
-    if (modelId.includes('flux')) return 'flux';
-    if (modelId.includes('ideogram')) return 'ideogram';
-    if (modelId.includes('recraft')) return 'recraft';
-    if (modelId.includes('sd_') || modelId.includes('stable')) return 'stable_diffusion';
-    if (modelId.includes('dalle')) return 'dalle';
-    if (modelId.includes('imagen')) return 'imagen'; // Non-Google Imagen
+    if (id.includes('midjourney')) return 'midjourney';
+    if (id.includes('seedream')) return 'seedream';
+    if (id.includes('kling') || id.includes('colors') || id === 'o1') return 'kling';
+    if (id.includes('dreamina')) return 'dreamina';
+    if (id.includes('z_image')) return 'z_image';
+    if (id.includes('hailuo')) return 'hailuo';
+    if (id.includes('flux')) return 'flux';
+    if (id.includes('ideogram')) return 'ideogram';
+    if (id.includes('recraft')) return 'recraft';
+    if (id.includes('sd_') || id.includes('stable')) return 'stable_diffusion';
+    if (id.includes('dalle')) return 'dalle';
+    if (id.includes('imagen')) return 'imagen'; // Non-Google Imagen
 
     return 'gemini'; // Default to Gemini (no translation needed)
 }
