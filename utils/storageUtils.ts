@@ -152,3 +152,44 @@ export async function fetchUserStatsFromCloud(userId: string) {
         return null; // Return null to fallback to local project stats
     }
 }
+
+/**
+ * Track text API token usage and sync to Supabase
+ * Should be called after text API calls to accumulate token counts
+ */
+export async function trackTextTokenUsage(
+    userId: string | null | undefined,
+    currentStats: any,
+    updateStateAndRecord: (fn: (s: any) => any) => void
+) {
+    // Get token usage from window (set by callGeminiText)
+    const tokenUsage = (window as any).__lastTextTokenUsage;
+    if (!tokenUsage) return;
+
+    // Clear for next call
+    (window as any).__lastTextTokenUsage = null;
+
+    const updatedStats = {
+        ...currentStats,
+        textTokens: (currentStats?.textTokens || 0) + (tokenUsage.totalTokens || 0),
+        promptTokens: (currentStats?.promptTokens || 0) + (tokenUsage.promptTokens || 0),
+        candidateTokens: (currentStats?.candidateTokens || 0) + (tokenUsage.candidateTokens || 0),
+        textCalls: (currentStats?.textCalls || 0) + 1,
+        lastGeneratedAt: new Date().toISOString()
+    };
+
+    updateStateAndRecord(s => ({
+        ...s,
+        usageStats: updatedStats
+    }));
+
+    if (userId) {
+        syncUserStatsToCloud(userId, updatedStats);
+    }
+
+    console.log('[Storage] Token usage tracked:', {
+        added: tokenUsage.totalTokens,
+        totalAccumulated: updatedStats.textTokens,
+        calls: updatedStats.textCalls
+    });
+}

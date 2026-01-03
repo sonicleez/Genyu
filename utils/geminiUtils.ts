@@ -98,6 +98,15 @@ export const callGeminiAPI = async (
     }
 };
 
+export interface TextGenerationResult {
+    text: string;
+    tokenUsage?: {
+        promptTokens: number;
+        candidateTokens: number;
+        totalTokens: number;
+    };
+}
+
 export const callGeminiText = async (
     apiKey: string,
     prompt: string,
@@ -119,6 +128,22 @@ export const callGeminiText = async (
             }],
             config: jsonMode ? { responseMimeType: "application/json" } : {}
         });
+
+        // Log token usage if available
+        const usage = response.usageMetadata;
+        if (usage) {
+            console.log('[Gemini Text] Token Usage:', {
+                prompt: usage.promptTokenCount,
+                candidates: usage.candidatesTokenCount,
+                total: usage.totalTokenCount
+            });
+            // Store in global for tracking (will be picked up by syncUserStatsToCloud)
+            (window as any).__lastTextTokenUsage = {
+                promptTokens: usage.promptTokenCount || 0,
+                candidateTokens: usage.candidatesTokenCount || 0,
+                totalTokens: usage.totalTokenCount || 0
+            };
+        }
 
         return response.text;
     } catch (err: any) {

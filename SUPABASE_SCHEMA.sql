@@ -20,7 +20,11 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS usage_stats JSONB DEFAULT '
   "scenes": 0,
   "characters": 0,
   "products": 0,
-  "concepts": 0
+  "concepts": 0,
+  "textTokens": 0,
+  "promptTokens": 0,
+  "candidateTokens": 0,
+  "textCalls": 0
 }'::jsonb;
 
 -- 2. Create USER_API_KEYS table (User-provided keys)

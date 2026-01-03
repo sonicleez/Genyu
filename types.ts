@@ -304,6 +304,11 @@ export interface ProjectState {
     characters?: number;
     products?: number;
     concepts?: number;
+    // Token usage
+    textTokens?: number;     // Total text tokens used
+    promptTokens?: number;   // Input tokens
+    candidateTokens?: number; // Output tokens
+    textCalls?: number;      // Number of text API calls
     lastGeneratedAt?: string;
   };
 
