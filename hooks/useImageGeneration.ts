@@ -1079,6 +1079,10 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             let dopRecordId: string | null = null;
             if (userId && userApiKey) {
                 try {
+                    if (addProductionLog) {
+                        addProductionLog('dop', `📝 Recording to DOP Learning...`, 'info', 'recording');
+                    }
+
                     dopRecordId = await recordPrompt(
                         userId,
                         finalImagePrompt,
@@ -1088,9 +1092,28 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                         currentState.aspectRatio,
                         userApiKey
                     );
-                    console.log('[ImageGen] 📝 DOP recorded:', dopRecordId);
+
+                    if (dopRecordId) {
+                        console.log('[ImageGen] ✅ DOP recorded:', dopRecordId);
+                        if (addProductionLog) {
+                            addProductionLog('dop', `✅ Đã lưu vào DOP Learning (ID: ${dopRecordId.slice(0, 8)}...)`, 'info', 'recorded');
+                        }
+                    } else {
+                        console.warn('[ImageGen] ⚠️ DOP recording returned null');
+                        if (addProductionLog) {
+                            addProductionLog('dop', `⚠️ DOP: Không thể ghi (kiểm tra bảng Supabase)`, 'warning', 'record_failed');
+                        }
+                    }
                 } catch (e) {
-                    console.warn('[ImageGen] DOP recording failed:', e);
+                    console.error('[ImageGen] ❌ DOP recording failed:', e);
+                    if (addProductionLog) {
+                        addProductionLog('dop', `❌ DOP error: ${(e as Error).message?.slice(0, 50)}`, 'error', 'record_error');
+                    }
+                }
+            } else {
+                console.warn('[ImageGen] ⚠️ DOP skipped - missing userId:', !!userId, 'or apiKey:', !!userApiKey);
+                if (addProductionLog && !userId) {
+                    addProductionLog('dop', `⚠️ DOP: Chưa đăng nhập Supabase (userId missing)`, 'warning', 'no_user');
                 }
             }
 
