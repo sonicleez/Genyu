@@ -312,7 +312,18 @@ export class GommoAI {
         if (params.subjects && params.subjects.length > 0) {
             // Gommo expects subjects as JSON array
             payload.subjects = params.subjects;
-            console.log(`[Gommo AI] Adding ${params.subjects.length} subject(s) for reference`);
+            console.log(`[Gommo AI] 🎭 Adding ${params.subjects.length} subject(s) for reference`);
+
+            // Debug: Log subject details
+            params.subjects.forEach((subject, idx) => {
+                const hasUrl = !!subject.url;
+                const hasData = !!subject.data;
+                const hasIdBase = !!subject.id_base;
+                const dataSize = subject.data ? `${Math.round(subject.data.length / 1024)}KB` : 'N/A';
+                console.log(`[Gommo AI]   Subject ${idx + 1}: url=${hasUrl}, data=${hasData} (${dataSize}), id_base=${hasIdBase}`);
+            });
+        } else {
+            console.log('[Gommo AI] ⚠️ No subjects provided - character reference will NOT be used');
         }
 
         const result = await this.request<{ imageInfo: GommoImageResult; success: boolean }>(
