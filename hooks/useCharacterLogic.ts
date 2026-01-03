@@ -7,6 +7,8 @@ import { getCharacterStyleById } from '../constants/characterStyles';
 import { callGeminiAPI, callCharacterImageAPI } from '../utils/geminiUtils';
 import { uploadImageToSupabase, syncUserStatsToCloud } from '../utils/storageUtils';
 import { normalizePromptAsync, needsNormalization, containsVietnamese, formatNormalizationLog } from '../utils/promptNormalizer';
+import { recordPrompt, approvePrompt, searchSimilarPrompts } from '../utils/dopLearning';
+import { performQualityCheck, shouldAutoRetry, generateRefinedPrompt } from '../utils/qualityScoring';
 
 export function useCharacterLogic(
     state: ProjectState,
@@ -599,6 +601,21 @@ CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be rec
                 setAgentState('dop', 'working', `🎨 Generating with ${model}...`, 'generating');
             }
 
+            // Record prompt in DOP Learning System
+            let dopRecordId: string | null = null;
+            if (userId && apiKey) {
+                dopRecordId = await recordPrompt(
+                    userId,
+                    prompt,
+                    promptToSend,
+                    model,
+                    'character',
+                    aspectRatio,
+                    apiKey
+                );
+                console.log('[CharacterGen] DOP recorded:', dopRecordId);
+            }
+
             // Use callCharacterImageAPI for proper Gemini/Gommo routing
             const imageUrl = await callCharacterImageAPI(
                 apiKey,
@@ -617,6 +634,35 @@ CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be rec
                     } catch (e) {
                         console.error("Cloud storage upload failed", e);
                     }
+                }
+
+                // Quality check for non-Gemini models
+                let qualityResult = null;
+                if (needsNormalization(model) && apiKey) {
+                    updateCharacter(charId, { generationStatus: '🔍 Checking quality...' });
+                    if (setAgentState) {
+                        setAgentState('dop', 'working', '🔍 Analyzing image quality...', 'quality_check');
+                    }
+
+                    qualityResult = await performQualityCheck(imageUrl, prompt, 'character', apiKey);
+                    console.log('[CharacterGen] Quality score:', qualityResult.score.overall);
+
+                    // Approve in DOP Learning if quality is good
+                    if (dopRecordId && qualityResult.score.overall >= 0.7) {
+                        await approvePrompt(dopRecordId, {
+                            overall: qualityResult.score.overall,
+                            fullBody: qualityResult.score.fullBodyVisible,
+                            background: qualityResult.score.backgroundClean,
+                            faceClarity: qualityResult.score.faceClarity,
+                            match: qualityResult.score.matchesDescription
+                        });
+                    }
+
+                    // Show quality feedback
+                    const qualityEmoji = qualityResult.score.overall >= 0.8 ? '✅' :
+                        qualityResult.score.overall >= 0.6 ? '⚠️' : '❌';
+                    const qualityMsg = `${qualityEmoji} Quality: ${Math.round(qualityResult.score.overall * 100)}%`;
+                    updateCharacter(charId, { generationStatus: qualityMsg });
                 }
 
                 updateCharacter(charId, { generatedImage: finalUrl, isGenerating: false, generationStartTime: undefined });
