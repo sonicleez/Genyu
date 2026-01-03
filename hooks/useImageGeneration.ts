@@ -213,9 +213,8 @@ export function useImageGeneration(
         // ═══════════════════════════════════════════════════════════════
         // GEMINI PATH: Full multi-modal generation with image references
         // ═══════════════════════════════════════════════════════════════
-        const isHighRes = model === 'gemini-3-pro-image-preview';
-
-        if (apiKey && isHighRes) {
+        // Use Gemini API for all Gemini-provider models
+        if (apiKey && provider === 'gemini') {
             console.log('[ImageGen] 🔵 Using GEMINI provider');
             const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
 
