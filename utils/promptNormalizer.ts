@@ -23,8 +23,18 @@ export type ModelType =
     | 'dalle';
 
 // Detect model type from model ID
+// Note: Gemini-based models (gemini, banana_pro, imagen via google) support Vietnamese natively
 export function detectModelType(modelId: string): ModelType {
+    // Gemini direct
     if (modelId.includes('gemini')) return 'gemini';
+
+    // Google Nano Banana Pro (Gemini-based) - supports Vietnamese!
+    if (modelId.includes('banana') || modelId.includes('google_nano')) return 'gemini';
+
+    // Google Imagen via Gommo - also Gemini-based, supports Vietnamese
+    if (modelId.includes('google_image_gen')) return 'gemini';
+
+    // Non-Google models - need translation
     if (modelId.includes('midjourney')) return 'midjourney';
     if (modelId.includes('seedream')) return 'seedream';
     if (modelId.includes('kling') || modelId.includes('colors') || modelId === 'o1') return 'kling';
@@ -36,9 +46,9 @@ export function detectModelType(modelId: string): ModelType {
     if (modelId.includes('recraft')) return 'recraft';
     if (modelId.includes('sd_') || modelId.includes('stable')) return 'stable_diffusion';
     if (modelId.includes('dalle')) return 'dalle';
-    if (modelId.includes('imagen') || modelId.includes('google_image_gen')) return 'imagen';
-    if (modelId.includes('banana')) return 'banana_pro';
-    return 'gemini'; // Default
+    if (modelId.includes('imagen')) return 'imagen'; // Non-Google Imagen
+
+    return 'gemini'; // Default to Gemini (no translation needed)
 }
 
 // Check if text contains Vietnamese
