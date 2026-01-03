@@ -142,15 +142,22 @@ export const CharacterGeneratorModal: React.FC<CharacterGeneratorModalProps> = (
                         </div>
                         <div className="flex-1">
                             <label className="block text-xs font-medium text-gray-400 mb-1">Độ phân giải</label>
-                            <select
-                                value={resolution}
-                                onChange={(e) => setResolution(e.target.value)}
-                                className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:border-green-500"
-                            >
-                                <option value="1K">1K (1024x1024) - Chuẩn</option>
-                                <option value="2K">2K (2048x2048) - Nét</option>
-                                <option value="4K">4K (4096x4096) - Siêu Nét</option>
-                            </select>
+                            {(() => {
+                                const modelInfo = IMAGE_MODELS.find(m => m.value === selectedModel);
+                                const isGommo = modelInfo?.provider === 'gommo';
+                                const providerLabel = isGommo ? '🟡' : '🔵';
+                                return (
+                                    <select
+                                        value={resolution}
+                                        onChange={(e) => setResolution(e.target.value)}
+                                        className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:border-green-500"
+                                    >
+                                        <option value="1K">1K (1024x) - {providerLabel} Chuẩn</option>
+                                        <option value="2K">2K (2048x) - {providerLabel} Nét</option>
+                                        <option value="4K">4K (4096x) - {providerLabel} Siêu Nét</option>
+                                    </select>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>
