@@ -536,37 +536,34 @@ CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be rec
             `.trim();
 
             const apiKey = (userApiKey || (process.env as any).API_KEY)?.trim();
-            if (!apiKey) {
-                setApiKeyModalOpen(true);
-                throw new Error("API Key is missing");
-            }
 
-            const ai = new GoogleGenAI({ apiKey });
-            const response = await ai.models.generateContent({
-                model: model,
-                contents: [{ parts: [{ text: fullPrompt }] }],
-                config: {
-                    imageConfig: {
-                        aspectRatio: aspectRatio
-                    }
-                }
-            });
+            // Prepare Gommo credentials from state
+            const gommoCredentials = state.gommoDomain && state.gommoAccessToken
+                ? { domain: state.gommoDomain, accessToken: state.gommoAccessToken }
+                : undefined;
 
-            const imagePart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-            if (imagePart?.inlineData) {
-                const base64ImageBytes = imagePart.inlineData.data;
-                let imageUrl = `data:${imagePart.inlineData.mimeType};base64,${base64ImageBytes}`;
+            // Use callCharacterImageAPI for proper Gemini/Gommo routing
+            const imageUrl = await callCharacterImageAPI(
+                apiKey,
+                fullPrompt,
+                aspectRatio,
+                model,
+                null, // no reference image for character creation
+                gommoCredentials
+            );
 
-                if (userId) {
+            if (imageUrl) {
+                let finalUrl = imageUrl;
+                if (userId && imageUrl.startsWith('data:')) {
                     try {
-                        imageUrl = await uploadImageToSupabase(imageUrl, 'project-assets', `${userId}/characters/${charId}_gen_${Date.now()}.jpg`);
+                        finalUrl = await uploadImageToSupabase(imageUrl, 'project-assets', `${userId}/characters/${charId}_gen_${Date.now()}.jpg`);
                     } catch (e) {
                         console.error("Cloud storage upload failed", e);
                     }
                 }
 
-                updateCharacter(charId, { generatedImage: imageUrl, isGenerating: false });
-                if (addToGallery) addToGallery(imageUrl, 'character', prompt, charId);
+                updateCharacter(charId, { generatedImage: finalUrl, isGenerating: false });
+                if (addToGallery) addToGallery(finalUrl, 'character', prompt, charId);
 
                 // Sync usage stats to Supabase
                 updateStateAndRecord(s => {
@@ -589,7 +586,7 @@ CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be rec
             updateCharacter(charId, { isGenerating: false });
             alert(`❌ Lỗi tạo ảnh: ${err.message}`);
         }
-    }, [userApiKey, updateCharacter, userId]);
+    }, [userApiKey, updateCharacter, userId, state.gommoDomain, state.gommoAccessToken]);
 
     return {
         updateCharacter,
