@@ -1,5 +1,8 @@
 import { supabase } from './supabaseClient';
 
+// Re-export supabase client for other modules
+export { supabase };
+
 /**
  * Uploads a base64 image string to Supabase Storage.
  * @param base64Data The base64 image data (including the data:image/...;base64, prefix)
