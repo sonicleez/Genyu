@@ -2,6 +2,7 @@ import React from 'react';
 import { Character, CharacterProp } from '../../types';
 import Modal from '../Modal';
 import SingleImageSlot from '../SingleImageSlot';
+import { QualityRating } from '../common/QualityRating';
 
 interface CharacterDetailModalProps {
     isOpen: boolean;
@@ -105,6 +106,18 @@ export const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                         isProcessing={character.isAnalyzing}
                         processingStartTime={character.generationStartTime}
                     />
+
+                    {/* DOP Learning Rating */}
+                    {character.masterImage && (
+                        <div className="mt-2 flex justify-center">
+                            <QualityRating
+                                dopRecordId={character.dopRecordId}
+                                size="md"
+                                className="bg-gray-800 px-4 py-2 rounded-lg"
+                            />
+                        </div>
+                    )}
+
                     {/* Combined Analyze + Generate Buttons */}
                     {character.masterImage && !character.isAnalyzing && (
                         <div className="mt-4 space-y-2">
