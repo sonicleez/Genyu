@@ -54,8 +54,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     const [statusMsg, setStatusMsg] = useState('');
     const [localApiKey, setLocalApiKey] = useState(apiKey);
 
-    // Gommo state
-    const [localGommoDomain, setLocalGommoDomain] = useState(gommoDomain);
+    // Gommo state - default domain is aivideoauto.com
+    const [localGommoDomain, setLocalGommoDomain] = useState(gommoDomain || 'aivideoauto.com');
     const [localGommoToken, setLocalGommoToken] = useState(gommoAccessToken);
     const [gommoStatus, setGommoStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle');
     const [gommoMsg, setGommoMsg] = useState('');
@@ -326,8 +326,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                             type="text"
                             value={localGommoDomain}
                             onChange={(e) => setLocalGommoDomain(e.target.value)}
-                            placeholder="Domain (vd: mydomain.com)"
-                            className="w-full px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all text-sm"
+                            placeholder="Domain (mặc định: aivideoauto.com)"
+                            className="w-full px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all text-sm text-gray-400"
                         />
                         <div className="relative">
                             <input
