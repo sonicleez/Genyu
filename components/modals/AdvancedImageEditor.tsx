@@ -1,14 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Type, GoogleGenAI } from "@google/genai";
-import { X, Undo, Redo, Eraser, Brush, Download, Wand2, Image as ImageIcon, History, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Scan, Maximize, Layers, Palette, Search, Upload, LayoutGrid, List, Shirt, ChevronDown } from 'lucide-react';
+import { X, Undo, Redo, Eraser, Brush, Download, Wand2, Image as ImageIcon, History, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Scan, Maximize, Layers, Palette, Search, Upload, LayoutGrid, List, Shirt, ChevronDown, RectangleHorizontal } from 'lucide-react';
 import MaskCanvas, { MaskCanvasHandle } from '../MaskCanvas';
 import { upscaleImage, expandImage, editImageWithMask, analyzeImage, compositeImages, applyStyleTransfer, generateImageFromImage, tryOnOutfit, GeneratedImage } from '../../utils/geminiImageEdit';
-import { IMAGE_MODELS } from '../../constants/presets';
+import { IMAGE_MODELS, ASPECT_RATIOS } from '../../constants/presets';
 
 import { Character, Product } from '../../types';
 
 // Filter models that support editing
 const EDIT_MODELS = IMAGE_MODELS.filter(m => m.supportsEdit);
+
+// Simple aspect ratios for the editor
+const EDITOR_RATIOS = [
+    { value: '16:9', label: '16:9' },
+    { value: '9:16', label: '9:16' },
+    { value: '1:1', label: '1:1' },
+    { value: '4:3', label: '4:3' },
+    { value: '3:4', label: '3:4' },
+];
 
 interface AdvancedImageEditorProps {
     isOpen: boolean;
@@ -377,6 +386,37 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                 });
             }
 
+            // ═══════════════════════════════════════════════════════════════
+            // CREATE MODE: No source image - pure text-to-image generation
+            // ═══════════════════════════════════════════════════════════════
+            if (isCreateMode || !currentImage) {
+                setLoadingMessage('Generating new image from prompt...');
+
+                // Use Gemini native text-to-image
+                const ai = new GoogleGenAI({ apiKey });
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.0-flash-preview-image-generation',
+                    contents: prompt,
+                    config: {
+                        responseModalities: ['TEXT', 'IMAGE'] as any,
+                    },
+                });
+
+                // Extract image from response
+                const parts = response.candidates?.[0]?.content?.parts || [];
+                const imagePart = parts.find((p: any) => p.inlineData?.mimeType?.includes('image'));
+
+                if (imagePart?.inlineData) {
+                    const newImage = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+                    setCurrentImage(newImage);
+                    addToHistory(newImage, prompt);
+                    setIsCreateMode(false); // Switch to edit mode after first generation
+                } else {
+                    throw new Error('No image generated. Try a different prompt.');
+                }
+                return;
+            }
+
             // Check if we are doing Composition or Style Transfer first
             if (activeTab === 'layers' && layerImage) {
                 setLoadingMessage('Compositing Images...');
@@ -635,6 +675,23 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                     </div>
 
                     <div className="flex items-center space-x-4">
+                        {/* Ratio Selector - Quick Toggle */}
+                        <div className="flex items-center bg-gray-800/50 rounded-lg p-0.5 border border-gray-700">
+                            {EDITOR_RATIOS.map(ratio => (
+                                <button
+                                    key={ratio.value}
+                                    onClick={() => setImageAspectRatio(ratio.value)}
+                                    className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${imageAspectRatio === ratio.value
+                                            ? 'bg-purple-600 text-white'
+                                            : 'text-gray-400 hover:text-white'
+                                        }`}
+                                    title={ratio.label}
+                                >
+                                    {ratio.label}
+                                </button>
+                            ))}
+                        </div>
+
                         {/* Model Selector */}
                         <div className="relative">
                             <button
