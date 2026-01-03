@@ -367,7 +367,11 @@ export class GommoAI {
             }
 
             if (result.status === 'ERROR') {
-                throw new Error('Gommo image generation failed');
+                // Extract error details from response
+                const r = result as any;
+                const errorMsg = r.error || r.message || r.reason || 'Unknown error';
+                console.error('[Gommo AI] ❌ Generation failed:', result);
+                throw new Error(`Gommo error: ${errorMsg}. Model may not support this request.`);
             }
 
             // Still processing, wait and retry
