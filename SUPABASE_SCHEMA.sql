@@ -34,8 +34,13 @@ CREATE TABLE public.user_api_keys (
   provider TEXT NOT NULL, -- e.g., 'gemini', 'openai'
   encrypted_key TEXT NOT NULL,
   is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(user_id, provider)  -- Required for upsert on conflict
 );
+
+-- Add unique constraint if table already exists
+CREATE UNIQUE INDEX IF NOT EXISTS user_api_keys_user_provider_unique 
+ON public.user_api_keys(user_id, provider);
 
 -- 2.1 Create SYSTEM_API_KEYS table (Admin-managed keys)
 CREATE TABLE public.system_api_keys (
