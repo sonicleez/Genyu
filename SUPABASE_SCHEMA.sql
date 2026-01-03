@@ -153,3 +153,159 @@ CREATE POLICY "Users can update/delete their own assets" ON storage.objects
     bucket_id = 'project-assets' AND 
     (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- ============================================================================
+-- DOP LEARNING SYSTEM - RAG Vector Storage
+-- Stores prompt learnings with embeddings for semantic search
+-- ============================================================================
+
+-- Enable pgvector extension (run once)
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- 8. DOP_PROMPT_RECORDS - Stores all generated prompts with embeddings
+CREATE TABLE IF NOT EXISTS public.dop_prompt_records (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users ON DELETE CASCADE,
+    
+    -- Prompt data
+    original_prompt TEXT NOT NULL,
+    normalized_prompt TEXT NOT NULL,
+    embedding vector(768), -- Gemini embedding dimension
+    
+    -- Generation context
+    model_id TEXT NOT NULL,
+    model_type TEXT NOT NULL, -- gemini, imagen, midjourney, etc.
+    mode TEXT NOT NULL CHECK (mode IN ('character', 'scene')),
+    aspect_ratio TEXT DEFAULT '16:9',
+    
+    -- Quality metrics
+    quality_score REAL, -- 0.0-1.0 overall quality
+    full_body_score REAL,
+    background_score REAL,
+    face_clarity_score REAL,
+    match_score REAL,
+    
+    -- Status
+    was_approved BOOLEAN DEFAULT false,
+    was_retried BOOLEAN DEFAULT false,
+    retry_count INTEGER DEFAULT 0,
+    
+    -- Metadata
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()),
+    keywords TEXT[], -- Extracted keywords
+    tags TEXT[] -- User-added tags
+);
+
+-- Index for fast vector similarity search
+CREATE INDEX IF NOT EXISTS dop_prompt_embedding_idx 
+ON public.dop_prompt_records 
+USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+
+-- Index for filtering
+CREATE INDEX IF NOT EXISTS dop_prompt_model_idx ON public.dop_prompt_records(model_type, mode);
+CREATE INDEX IF NOT EXISTS dop_prompt_user_idx ON public.dop_prompt_records(user_id);
+CREATE INDEX IF NOT EXISTS dop_prompt_approved_idx ON public.dop_prompt_records(was_approved) WHERE was_approved = true;
+
+-- 9. DOP_MODEL_LEARNINGS - Aggregated learnings per model type
+CREATE TABLE IF NOT EXISTS public.dop_model_learnings (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    model_type TEXT NOT NULL UNIQUE,
+    
+    -- Statistics
+    total_generations INTEGER DEFAULT 0,
+    approved_count INTEGER DEFAULT 0,
+    avg_quality_score REAL DEFAULT 0,
+    approval_rate REAL DEFAULT 0,
+    
+    -- Best practices (JSON)
+    best_aspect_ratios JSONB DEFAULT '{}'::jsonb, -- {"9:16": 45, "16:9": 30}
+    common_keywords JSONB DEFAULT '{}'::jsonb,    -- {"full body": 100, "8k": 80}
+    successful_patterns TEXT[], -- Top 50 keywords
+    
+    -- Metadata
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now())
+);
+
+-- 10. Vector similarity search function
+CREATE OR REPLACE FUNCTION search_similar_prompts(
+    query_embedding vector(768),
+    match_model_type TEXT DEFAULT NULL,
+    match_mode TEXT DEFAULT NULL,
+    match_count INT DEFAULT 5,
+    similarity_threshold FLOAT DEFAULT 0.7
+)
+RETURNS TABLE (
+    id UUID,
+    original_prompt TEXT,
+    normalized_prompt TEXT,
+    model_type TEXT,
+    mode TEXT,
+    quality_score REAL,
+    similarity FLOAT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        r.id,
+        r.original_prompt,
+        r.normalized_prompt,
+        r.model_type,
+        r.mode,
+        r.quality_score,
+        1 - (r.embedding <=> query_embedding) AS similarity
+    FROM public.dop_prompt_records r
+    WHERE 
+        r.was_approved = true
+        AND r.quality_score >= 0.7
+        AND (match_model_type IS NULL OR r.model_type = match_model_type)
+        AND (match_mode IS NULL OR r.mode = match_mode)
+        AND r.embedding IS NOT NULL
+        AND 1 - (r.embedding <=> query_embedding) >= similarity_threshold
+    ORDER BY r.embedding <=> query_embedding
+    LIMIT match_count;
+END;
+$$;
+
+-- 11. Function to get best keywords for a model
+CREATE OR REPLACE FUNCTION get_model_best_keywords(
+    target_model_type TEXT,
+    keyword_limit INT DEFAULT 20
+)
+RETURNS TABLE (keyword TEXT, frequency INT)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        k.keyword::TEXT,
+        k.frequency::INT
+    FROM (
+        SELECT 
+            jsonb_object_keys(common_keywords) AS keyword,
+            (common_keywords->>jsonb_object_keys(common_keywords))::INT AS frequency
+        FROM public.dop_model_learnings
+        WHERE model_type = target_model_type
+    ) k
+    ORDER BY k.frequency DESC
+    LIMIT keyword_limit;
+END;
+$$;
+
+-- RLS for DOP tables
+ALTER TABLE public.dop_prompt_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.dop_model_learnings ENABLE ROW LEVEL SECURITY;
+
+-- Users can only see their own prompt records
+CREATE POLICY "Users can manage own prompt records" ON public.dop_prompt_records
+    FOR ALL USING (auth.uid() = user_id);
+
+-- Model learnings are shared (read-only for users)
+CREATE POLICY "Anyone can read model learnings" ON public.dop_model_learnings
+    FOR SELECT USING (true);
+
+-- Only system can update model learnings (via service role)
+CREATE POLICY "Service role can update learnings" ON public.dop_model_learnings
+    FOR ALL USING (auth.role() = 'service_role');
