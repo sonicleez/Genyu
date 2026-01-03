@@ -991,6 +991,10 @@ const App: React.FC = () => {
                                 onUploadForEdit={(base64) => {
                                     openEditor('upload-' + Date.now(), base64, 'scene');
                                 }}
+                                onOpenStudio={() => {
+                                    // Open editor in create mode (no source image)
+                                    openEditor('studio-' + Date.now(), '', 'scene');
+                                }}
                             />
                         )}
                     </div>

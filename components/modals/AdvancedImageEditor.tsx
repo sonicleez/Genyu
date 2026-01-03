@@ -13,13 +13,14 @@ const EDIT_MODELS = IMAGE_MODELS.filter(m => m.supportsEdit);
 interface AdvancedImageEditorProps {
     isOpen: boolean;
     onClose: () => void;
-    sourceImage: string;
+    sourceImage?: string; // Optional: empty = Create Mode
     onSave: (editedImage: string, history: { id: string, image: string, prompt: string }[], viewKey?: string) => void;
     apiKey: string;
     initialHistory?: { id: string; image: string; prompt: string }[];
     character?: Character;
     product?: Product;
     activeView?: string;
+    createMode?: boolean; // Open in create mode (no source image)
 }
 
 const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -33,7 +34,8 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
     initialHistory,
     character,
     product,
-    activeView: initialActiveView
+    activeView: initialActiveView,
+    createMode = false
 }) => {
     // Canvas State
     const canvasRef = useRef<MaskCanvasHandle>(null);
@@ -54,13 +56,16 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
     const [isTryOnLoading, setIsTryOnLoading] = useState(false);
 
     // Image State
-    const [currentImage, setCurrentImage] = useState(sourceImage);
+    const [currentImage, setCurrentImage] = useState(sourceImage || '');
     const [history, setHistory] = useState<{ id: string, image: string, prompt: string, resolution?: '1k' | '2k' | '4k' }[]>(
         initialHistory && initialHistory.length > 0
             ? initialHistory.map(h => ({ ...h, resolution: h.resolution || '1k' }))
-            : [{ id: generateId(), image: sourceImage, prompt: 'Original', resolution: '1k' }]
+            : sourceImage
+                ? [{ id: generateId(), image: sourceImage, prompt: 'Original', resolution: '1k' }]
+                : [] // Empty for createMode
     );
     const [historyLayout, setHistoryLayout] = useState<'list' | 'grid'>('list');
+    const [isCreateMode, setIsCreateMode] = useState(createMode || !sourceImage);
 
     // Advanced Features State
     const [analysisTags, setAnalysisTags] = useState<string[] | null>(null);

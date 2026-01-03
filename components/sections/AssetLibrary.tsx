@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Image as ImageIcon, Search, Trash2, CheckCircle2, Copy, Replace, Layers, X, Clock, Filter, Wand2, FolderOpen, Upload } from 'lucide-react';
+import { Image as ImageIcon, Search, Trash2, CheckCircle2, Copy, Replace, Layers, X, Clock, Filter, Wand2, FolderOpen, Upload, Sparkles } from 'lucide-react';
 import { ProjectState, GalleryAsset, Scene, Character, Product } from '../../types';
 
 interface AssetLibraryProps {
@@ -23,6 +23,8 @@ interface AssetLibraryProps {
     hasGommoCredentials?: boolean;
     // Image upload for editing
     onUploadForEdit?: (base64: string) => void;
+    // Open Studio in create mode
+    onOpenStudio?: () => void;
 }
 
 export const AssetLibrary: React.FC<AssetLibraryProps> = ({
@@ -38,7 +40,8 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
     onClose,
     onOpenGommoLibrary,
     hasGommoCredentials,
-    onUploadForEdit
+    onUploadForEdit,
+    onOpenStudio
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [filter, setFilter] = useState<string>('all');
@@ -89,6 +92,17 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    {/* Studio Button - Opens in Create Mode */}
+                    {onOpenStudio && (
+                        <button
+                            onClick={onOpenStudio}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg text-white text-xs font-bold transition-all shadow-lg shadow-purple-900/20"
+                            title="Mở Studio tạo ảnh mới"
+                        >
+                            <Sparkles size={14} />
+                            <span>Studio</span>
+                        </button>
+                    )}
                     {/* Upload Image Button */}
                     {onUploadForEdit && (
                         <>
