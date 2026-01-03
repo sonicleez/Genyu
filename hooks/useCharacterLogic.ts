@@ -6,6 +6,7 @@ import { GLOBAL_STYLES, CHARACTER_STYLES } from '../constants/presets';
 import { getCharacterStyleById } from '../constants/characterStyles';
 import { callGeminiAPI, callCharacterImageAPI } from '../utils/geminiUtils';
 import { uploadImageToSupabase, syncUserStatsToCloud } from '../utils/storageUtils';
+import { normalizePromptAsync, needsNormalization, containsVietnamese, formatNormalizationLog } from '../utils/promptNormalizer';
 
 export function useCharacterLogic(
     state: ProjectState,
@@ -542,10 +543,29 @@ CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be rec
                 ? { domain: state.gommoDomain, accessToken: state.gommoAccessToken }
                 : undefined;
 
+            // --- PROMPT NORMALIZATION FOR NON-GEMINI MODELS ---
+            let promptToSend = fullPrompt;
+            if (needsNormalization(model)) {
+                console.log('[CharacterGen] 🔧 Normalizing prompt for model:', model);
+                try {
+                    const normalized = await normalizePromptAsync(fullPrompt, model, apiKey, aspectRatio);
+                    promptToSend = normalized.normalized;
+                    console.log('[CharacterGen] ✅ Normalized:', {
+                        model: normalized.modelType,
+                        translated: normalized.translated,
+                        originalLen: normalized.original.length,
+                        normalizedLen: normalized.normalized.length,
+                        changes: normalized.changes
+                    });
+                } catch (normErr) {
+                    console.warn('[CharacterGen] Normalization failed, using original prompt:', normErr);
+                }
+            }
+
             // Use callCharacterImageAPI for proper Gemini/Gommo routing
             const imageUrl = await callCharacterImageAPI(
                 apiKey,
-                fullPrompt,
+                promptToSend,
                 aspectRatio,
                 model,
                 null, // no reference image for character creation
