@@ -9,6 +9,7 @@ import { uploadImageToSupabase, syncUserStatsToCloud } from '../utils/storageUti
 import { normalizePromptAsync, needsNormalization, containsVietnamese, formatNormalizationLog } from '../utils/promptNormalizer';
 import { recordPrompt, approvePrompt, searchSimilarPrompts } from '../utils/dopLearning';
 import { performQualityCheck, shouldAutoRetry, generateRefinedPrompt } from '../utils/qualityScoring';
+import { analyzeAndEnhance, predictSuccess, getInsights } from '../utils/dopIntelligence';
 
 export function useCharacterLogic(
     state: ProjectState,
@@ -549,8 +550,50 @@ CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be rec
                 ? { domain: state.gommoDomain, accessToken: state.gommoAccessToken }
                 : undefined;
 
+            // --- DOP INTELLIGENCE: Analyze and predict ---
+            let dopDecision = null;
+            if (userId && apiKey) {
+                try {
+                    updateCharacter(charId, { generationStatus: '🧠 DOP analyzing...' });
+                    if (setAgentState) {
+                        setAgentState('dop', 'working', '🧠 Analyzing with learned patterns...', 'analyzing');
+                    }
+
+                    dopDecision = await analyzeAndEnhance(prompt, model, 'character', aspectRatio, apiKey, userId);
+
+                    console.log('[CharacterGen] 🧠 DOP Intelligence:', {
+                        predictedQuality: dopDecision.enhancement.predictedQuality,
+                        addedKeywords: dopDecision.enhancement.addedKeywords,
+                        similarPrompts: dopDecision.enhancement.similarPrompts.length,
+                        suggestedAR: dopDecision.enhancement.suggestedAspectRatio,
+                        reasoning: dopDecision.enhancement.reasoning
+                    });
+
+                    // Show prediction to user
+                    const predictionEmoji = dopDecision.enhancement.predictedQuality >= 0.8 ? '🜢' :
+                        dopDecision.enhancement.predictedQuality >= 0.6 ? '🜡' : '🔴';
+                    const predictionMsg = `${predictionEmoji} Dự đoán: ${Math.round(dopDecision.enhancement.predictedQuality * 100)}% chất lượng`;
+                    updateCharacter(charId, { generationStatus: predictionMsg });
+
+                    if (setAgentState && dopDecision.warnings.length > 0) {
+                        setAgentState('dop', 'working', dopDecision.warnings[0], 'warning');
+                    }
+                } catch (e) {
+                    console.warn('[CharacterGen] DOP Intelligence failed:', e);
+                }
+            }
+
             // --- PROMPT NORMALIZATION FOR NON-GEMINI MODELS ---
             let promptToSend = fullPrompt;
+
+            // Apply DOP learned keywords for Gemini models too
+            if (dopDecision && dopDecision.enhancement.addedKeywords.length > 0) {
+                // Add learned keywords even for Gemini
+                const learnedKeywords = dopDecision.enhancement.addedKeywords.join(', ');
+                promptToSend = `${fullPrompt}\n\n[DOP LEARNED]: ${learnedKeywords}`;
+                console.log('[CharacterGen] 🧠 Added learned keywords:', learnedKeywords);
+            }
+
             if (needsNormalization(model)) {
                 console.log('[CharacterGen] 🔧 Normalizing prompt for model:', model);
 
