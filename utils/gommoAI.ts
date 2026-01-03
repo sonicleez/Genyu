@@ -182,10 +182,16 @@ export class GommoAI {
      * Check status of an image generation job
      */
     async checkImageStatus(id_base: string): Promise<GommoImageResult> {
-        const result = await this.request<GommoImageResult>(GOMMO_ENDPOINTS.checkImageStatus, {
+        const result = await this.request<any>(GOMMO_ENDPOINTS.checkImageStatus, {
             id_base,
         });
 
+        console.log('[Gommo AI] checkImageStatus raw response:', JSON.stringify(result).substring(0, 500));
+
+        // Response might be wrapped in imageInfo
+        if (result.imageInfo) {
+            return result.imageInfo;
+        }
         return result;
     }
 
