@@ -24,6 +24,7 @@ import { ManualScriptModal } from './components/modals/ManualScriptModal';
 import { ExcelImportModal } from './components/modals/ExcelImportModal';
 import { ActivationScreen } from './components/ActivationScreen';
 import { AssetLibrary } from './components/sections/AssetLibrary';
+import { GommoLibraryModal } from './components/modals/GommoLibraryModal';
 import { KeyboardShortcuts } from './components/common/KeyboardShortcuts';
 import { APP_NAME, PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from './constants/presets';
 import { handleDownloadAll } from './utils/zipUtils';
@@ -119,6 +120,7 @@ const App: React.FC = () => {
     const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
     const [isProjectBrowserOpen, setProjectBrowserOpen] = useState(false);
     const [isLibraryOpen, setLibraryOpen] = useState(false);
+    const [isGommoLibraryOpen, setGommoLibraryOpen] = useState(false);
     const [isManualScriptModalOpen, setManualScriptModalOpen] = useState(false);
     const [isExcelImportModalOpen, setExcelImportModalOpen] = useState(false);
     const [cloudProjects, setCloudProjects] = useState<any[]>([]);
@@ -984,6 +986,8 @@ const App: React.FC = () => {
                                         else updateProduct(id, { views: { ...prod.views, [view]: img } });
                                     }
                                 }}
+                                hasGommoCredentials={!!(state.gommoDomain && state.gommoAccessToken)}
+                                onOpenGommoLibrary={() => setGommoLibraryOpen(true)}
                             />
                         )}
                     </div>
@@ -1129,6 +1133,29 @@ const App: React.FC = () => {
                     />
 
                     {!session && <AuthModal isOpen={true} />}
+
+                    {/* Gommo Library Modal */}
+                    <GommoLibraryModal
+                        isOpen={isGommoLibraryOpen}
+                        onClose={() => setGommoLibraryOpen(false)}
+                        onSelectImage={(imageUrl) => {
+                            // Convert URL to base64 and open editor
+                            fetch(imageUrl)
+                                .then(res => res.blob())
+                                .then(blob => {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                        const base64 = reader.result as string;
+                                        openEditor('gommo-' + Date.now(), base64, 'scene');
+                                        setGommoLibraryOpen(false);
+                                    };
+                                    reader.readAsDataURL(blob);
+                                })
+                                .catch(err => console.error('[GommoLibrary] Failed to load image:', err));
+                        }}
+                        gommoDomain={state.gommoDomain}
+                        gommoAccessToken={state.gommoAccessToken}
+                    />
 
                     <ProjectBrowserModal
                         isOpen={isProjectBrowserOpen}
