@@ -395,7 +395,7 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                 // Use Gemini native text-to-image
                 const ai = new GoogleGenAI({ apiKey });
                 const response = await ai.models.generateContent({
-                    model: 'gemini-2.0-flash-preview-image-generation',
+                    model: 'gemini-3-pro-image-preview',
                     contents: prompt,
                     config: {
                         responseModalities: ['TEXT', 'IMAGE'] as any,
@@ -682,8 +682,8 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                                     key={ratio.value}
                                     onClick={() => setImageAspectRatio(ratio.value)}
                                     className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${imageAspectRatio === ratio.value
-                                            ? 'bg-purple-600 text-white'
-                                            : 'text-gray-400 hover:text-white'
+                                        ? 'bg-purple-600 text-white'
+                                        : 'text-gray-400 hover:text-white'
                                         }`}
                                     title={ratio.label}
                                 >
