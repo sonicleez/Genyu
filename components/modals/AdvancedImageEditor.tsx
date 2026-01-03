@@ -710,6 +710,23 @@ export const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({
                             ))}
                         </div>
 
+                        {/* Resolution Selector */}
+                        <div className="flex items-center bg-gray-800/50 rounded-lg p-0.5 border border-gray-700">
+                            {(['1k', '2k', '4k'] as const).map(res => (
+                                <button
+                                    key={res}
+                                    onClick={() => setCurrentResolution(res)}
+                                    className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${currentResolution === res
+                                        ? 'bg-green-600 text-white'
+                                        : 'text-gray-400 hover:text-white'
+                                        }`}
+                                    title={`${res.toUpperCase()} Resolution`}
+                                >
+                                    {res.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+
                         {/* Model Selector */}
                         <div className="relative">
                             <button
