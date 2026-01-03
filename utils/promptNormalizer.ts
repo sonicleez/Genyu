@@ -180,6 +180,7 @@ export interface NormalizedPrompt {
 
 /**
  * Translate and optimize prompt using Gemini
+ * CRITICAL: Preserves the user's core subject/intent
  */
 async function translateAndOptimize(
     prompt: string,
@@ -189,23 +190,47 @@ async function translateAndOptimize(
 ): Promise<{ optimized: string; wasTranslated: boolean }> {
     const config = MODEL_CONFIG[modelType];
 
-    const systemPrompt = `You are an expert AI image generation prompt engineer. Your task is to translate and optimize prompts for the ${modelType.toUpperCase()} model.
+    // Extract the core user description from the full prompt
+    // Character Generator wraps user input in "CHARACTER DESCRIPTION:" section
+    let userDescription = prompt;
+    const descMatch = prompt.match(/CHARACTER DESCRIPTION:\s*([\s\S]*?)(?:\n\nMANDATORY|\n\n!!!|$)/i);
+    if (descMatch && descMatch[1]) {
+        userDescription = descMatch[1].trim();
+        console.log('[PromptNormalizer] Extracted user description:', userDescription);
+    }
 
-RULES:
-1. If the input is in Vietnamese or any non-English language, translate it to English first.
-2. Restructure the prompt to be optimal for ${modelType.toUpperCase()} model:
-   - Max length: ${config.maxLength} characters
-   - Style position: ${config.styleFirst ? 'STYLE MUST BE FIRST' : 'Natural order'}
-   - Format: ${config.format}
-   ${config.promptTemplate ? `- Template: ${config.promptTemplate}` : ''}
-3. Keep the core meaning and visual intent.
-4. Remove redundant words, meta-instructions like "MANDATORY", "CRITICAL", etc.
-5. Make it concise but descriptive.
-6. DO NOT add any explanation - output ONLY the optimized prompt.
+    // Also check for style preset
+    let stylePreset = '';
+    const styleMatch = prompt.match(/STYLE PRESET:\s*([^\n]+)/i);
+    if (styleMatch && styleMatch[1]) {
+        stylePreset = styleMatch[1].trim();
+    }
 
-${modelType === 'midjourney' ? `For Midjourney, end with: --ar ${aspectRatio} --v 7 --style raw` : ''}
-${modelType === 'seedream' ? 'For Seedream, use comma-separated tags like: masterpiece, best quality, 1girl, detailed, etc.' : ''}
-${modelType === 'kling' ? 'For Kling, start with "professional photograph" for best quality.' : ''}`;
+    const systemPrompt = `You are an expert AI image generation prompt engineer.
+
+CRITICAL TASK:
+The user wants to generate an image. Their CORE DESCRIPTION is:
+"${userDescription}"
+${stylePreset ? `Style preset: ${stylePreset}` : ''}
+
+YOUR JOB:
+1. If the description is in Vietnamese, translate it to English ACCURATELY
+2. Format for ${modelType.toUpperCase()} model (max ${config.maxLength} chars)
+3. PRESERVE THE EXACT SUBJECT - if user says "dog", output must be about a dog, NOT a human
+4. Keep style and visual details from user's description
+5. Add quality keywords appropriate for the model
+
+OUTPUT RULES:
+- Output ONLY the optimized prompt, no explanation
+- Keep it concise: ${config.maxLength} chars max
+${config.promptTemplate ? `- Follow template: ${config.promptTemplate}` : ''}
+${modelType === 'midjourney' ? `- End with: --ar ${aspectRatio} --v 7 --style raw` : ''}
+${modelType === 'seedream' ? '- Use comma-separated tags: masterpiece, best quality, [subject], [details]' : ''}
+${modelType === 'imagen' ? '- Use natural English, style first, then subject details' : ''}
+
+EXAMPLE:
+Input (Vietnamese): "Một chú chó đốm dễ thương, đeo vòng cổ đỏ"
+Output: "cute spotted dalmatian dog wearing red collar, adorable pet portrait, studio lighting"`;
 
     try {
         const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
@@ -213,24 +238,27 @@ ${modelType === 'kling' ? 'For Kling, start with "professional photograph" for b
             model: 'gemini-2.0-flash',
             contents: [{
                 role: 'user',
-                parts: [{ text: `${systemPrompt}\n\nINPUT PROMPT:\n${prompt}` }]
+                parts: [{ text: systemPrompt }]
             }]
         });
 
-        const optimized = response.text?.trim() || prompt;
-        const wasTranslated = containsVietnamese(prompt);
+        const optimized = response.text?.trim() || userDescription;
+        const wasTranslated = containsVietnamese(userDescription);
 
         console.log('[PromptNormalizer] AI Optimized:', {
             modelType,
+            userDesc: userDescription.substring(0, 100),
             inputLen: prompt.length,
             outputLen: optimized.length,
+            output: optimized.substring(0, 200),
             translated: wasTranslated
         });
 
         return { optimized, wasTranslated };
     } catch (err) {
         console.error('[PromptNormalizer] Translation failed:', err);
-        return { optimized: prompt, wasTranslated: false };
+        // Fallback: just translate the user description if possible
+        return { optimized: userDescription, wasTranslated: false };
     }
 }
 
