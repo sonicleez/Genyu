@@ -3,7 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import Modal from '../Modal';
 import { supabase } from '../../utils/supabaseClient';
 import { PRIMARY_GRADIENT, PRIMARY_GRADIENT_HOVER } from '../../constants/presets';
-import { User, Key, Calendar, ShieldCheck, CreditCard, LogOut } from 'lucide-react';
+import { User, Key, Calendar, ShieldCheck, CreditCard, LogOut, BarChart3, Image, FileText, Layers, Package } from 'lucide-react';
 
 export interface UserProfileModalProps {
     isOpen: boolean;
@@ -14,6 +14,21 @@ export interface UserProfileModalProps {
     setApiKey: (key: string) => void;
     subscriptionExpired: boolean;
     onSignOut: () => void;
+    usageStats?: {
+        '1K'?: number;
+        '2K'?: number;
+        '4K'?: number;
+        total?: number;
+        scenes?: number;
+        characters?: number;
+        products?: number;
+        concepts?: number;
+        textTokens?: number;
+        promptTokens?: number;
+        candidateTokens?: number;
+        textCalls?: number;
+        lastGeneratedAt?: string;
+    };
 }
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
@@ -24,7 +39,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     apiKey,
     setApiKey,
     subscriptionExpired,
-    onSignOut
+    onSignOut,
+    usageStats
 }) => {
     const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle');
     const [statusMsg, setStatusMsg] = useState('');
@@ -127,6 +143,78 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         </div>
                     </div>
                 </div>
+
+                {/* Usage Stats Section */}
+                {usageStats && (
+                    <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+                        <div className="flex items-center space-x-2 mb-4">
+                            <div className="p-2 bg-purple-500/10 rounded-lg">
+                                <BarChart3 className="text-purple-400" size={18} />
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Thống kê sử dụng</p>
+                                <p className="text-white font-medium">{usageStats.total || 0} ảnh đã tạo</p>
+                            </div>
+                        </div>
+
+                        {/* Image Stats Grid */}
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                            <div className="bg-gray-900/50 rounded-lg p-3 flex items-center space-x-2">
+                                <Layers className="text-blue-400" size={16} />
+                                <div>
+                                    <p className="text-[10px] text-gray-500 uppercase">Scenes</p>
+                                    <p className="text-white font-bold">{usageStats.scenes || 0}</p>
+                                </div>
+                            </div>
+                            <div className="bg-gray-900/50 rounded-lg p-3 flex items-center space-x-2">
+                                <User className="text-green-400" size={16} />
+                                <div>
+                                    <p className="text-[10px] text-gray-500 uppercase">Characters</p>
+                                    <p className="text-white font-bold">{usageStats.characters || 0}</p>
+                                </div>
+                            </div>
+                            <div className="bg-gray-900/50 rounded-lg p-3 flex items-center space-x-2">
+                                <Package className="text-orange-400" size={16} />
+                                <div>
+                                    <p className="text-[10px] text-gray-500 uppercase">Products</p>
+                                    <p className="text-white font-bold">{usageStats.products || 0}</p>
+                                </div>
+                            </div>
+                            <div className="bg-gray-900/50 rounded-lg p-3 flex items-center space-x-2">
+                                <Image className="text-pink-400" size={16} />
+                                <div>
+                                    <p className="text-[10px] text-gray-500 uppercase">Concepts</p>
+                                    <p className="text-white font-bold">{usageStats.concepts || 0}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Token Stats */}
+                        <div className="border-t border-gray-700 pt-3">
+                            <div className="flex items-center space-x-2 mb-2">
+                                <FileText className="text-yellow-400" size={14} />
+                                <p className="text-[10px] text-gray-500 uppercase font-bold">Token Usage (Text API)</p>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="text-center">
+                                    <p className="text-lg font-bold text-white">{((usageStats.textTokens || 0) / 1000).toFixed(1)}K</p>
+                                    <p className="text-[9px] text-gray-500">Total</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-lg font-bold text-blue-400">{((usageStats.promptTokens || 0) / 1000).toFixed(1)}K</p>
+                                    <p className="text-[9px] text-gray-500">Input</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-lg font-bold text-green-400">{((usageStats.candidateTokens || 0) / 1000).toFixed(1)}K</p>
+                                    <p className="text-[9px] text-gray-500">Output</p>
+                                </div>
+                            </div>
+                            <p className="text-[9px] text-gray-600 mt-2 text-center">
+                                {usageStats.textCalls || 0} API calls • Last: {usageStats.lastGeneratedAt ? new Date(usageStats.lastGeneratedAt).toLocaleString('vi-VN') : 'N/A'}
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* API Key Section */}
                 <div className="space-y-3">

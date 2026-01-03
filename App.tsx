@@ -980,6 +980,7 @@ const App: React.FC = () => {
                         }}
                         subscriptionExpired={subscriptionExpired}
                         onSignOut={handleSignOut}
+                        usageStats={state.usageStats}
                     />
 
                     <ScriptGeneratorModal
