@@ -12,6 +12,17 @@ export interface GommoImageParams {
     project_id?: string;
     editImage?: boolean;
     base64Image?: string;
+    subjects?: GommoSubject[]; // For character/object references (Face ID support)
+}
+
+/**
+ * Subject reference for Gommo API
+ * Used to pass character Face ID or object references
+ */
+export interface GommoSubject {
+    name: string;           // Character/object name
+    base64Image: string;    // Full base64 with prefix: data:image/jpeg;base64,xxxxx
+    description?: string;   // Optional description
 }
 
 export interface GommoImageResult {
@@ -137,15 +148,26 @@ export class GommoAI {
      * Returns job info - use checkImageStatus or waitForImage for result
      */
     async createImage(params: GommoImageParams): Promise<GommoImageResult> {
-        const payload = {
+        const payload: Record<string, any> = {
             action_type: 'create',
             model: params.model || 'google_nano_banana_pro',
             prompt: params.prompt,
             ratio: params.ratio || '16_9',
             project_id: params.project_id || 'default',
-            editImage: params.editImage ? 'true' : undefined,
-            base64Image: params.base64Image,
         };
+
+        // Add edit image mode if specified
+        if (params.editImage) {
+            payload.editImage = 'true';
+            payload.base64Image = params.base64Image;
+        }
+
+        // Add subjects for Face ID / character references
+        if (params.subjects && params.subjects.length > 0) {
+            // Gommo expects subjects as JSON array
+            payload.subjects = params.subjects;
+            console.log(`[Gommo AI] Adding ${params.subjects.length} subject(s) for reference`);
+        }
 
         const result = await this.request<{ imageInfo: GommoImageResult; success: boolean }>(
             GOMMO_ENDPOINTS.createImage,
@@ -207,12 +229,15 @@ export class GommoAI {
     /**
      * High-level method: Generate image and wait for result
      * Returns the CDN URL of the generated image
+     * 
+     * @param subjects - Optional array of character/object references for Face ID
      */
     async generateImage(
         prompt: string,
         options: {
             ratio?: '16_9' | '9_16' | '1_1';
             model?: string;
+            subjects?: GommoSubject[];
             onProgress?: (status: string, attempt: number) => void;
         } = {}
     ): Promise<string> {
@@ -221,6 +246,7 @@ export class GommoAI {
             prompt,
             ratio: options.ratio,
             model: options.model,
+            subjects: options.subjects,
         });
 
         // Step 2: Poll until complete

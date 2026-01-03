@@ -147,15 +147,40 @@ export function useImageGeneration(
         console.log(`[ImageGen] Provider: ${provider}, Model: ${model}`);
 
         // ═══════════════════════════════════════════════════════════════
-        // GOMMO PATH: Prompt-only generation (no image references)
+        // GOMMO PATH: Supports subjects array for Face ID references
         // ═══════════════════════════════════════════════════════════════
         if (provider === 'gommo' && gommoCredentials?.domain && gommoCredentials?.accessToken) {
             console.log('[ImageGen] 🟡 Using GOMMO provider');
 
-            // Warn if parts contain image references (Gommo doesn't support them)
-            const hasImageParts = parts.some(p => p.inlineData);
-            if (hasImageParts) {
-                console.warn('[ImageGen] ⚠️ Gommo does not support image references. Character/Product refs will be IGNORED!');
+            // Convert Gemini parts to Gommo subjects format
+            // Look for parts with inlineData (images) that have associated text labels
+            const subjects: Array<{ name: string; base64Image: string; description?: string }> = [];
+
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                if (part.inlineData?.data && part.inlineData?.mimeType) {
+                    // Find the associated text label (usually the previous part)
+                    const prevPart = parts[i - 1];
+                    let name = 'Character';
+                    let description = '';
+
+                    if (prevPart?.text) {
+                        // Extract character name from text like "[IDENTITY_JOHN]: MANDATORY..."
+                        const nameMatch = prevPart.text.match(/\[IDENTITY_([^\]]+)\]/);
+                        if (nameMatch) {
+                            name = nameMatch[1].replace(/_/g, ' ');
+                        }
+                        description = prevPart.text.substring(0, 200);
+                    }
+
+                    // Convert to Gommo subject format (full base64 with prefix)
+                    const base64WithPrefix = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                    subjects.push({ name, base64Image: base64WithPrefix, description });
+                }
+            }
+
+            if (subjects.length > 0) {
+                console.log(`[ImageGen] 🎭 Converted ${subjects.length} Face ID references to Gommo subjects`);
             }
 
             try {
@@ -166,6 +191,7 @@ export function useImageGeneration(
                 const cdnUrl = await client.generateImage(prompt, {
                     ratio: gommoRatio,
                     model: model,
+                    subjects: subjects.length > 0 ? subjects : undefined,
                     onProgress: (status, attempt) => {
                         console.log(`[Gommo] Polling ${attempt}/60: ${status}`);
                     }
