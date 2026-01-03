@@ -249,7 +249,15 @@ export const callCharacterImageAPI = async (
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // GEMINI PATH (fallback / default)
+    // ERROR: Gommo model selected but credentials missing
+    // ═══════════════════════════════════════════════════════════════
+    if (provider === 'gommo') {
+        console.error('[CharacterGen] ❌ Gommo model selected but credentials missing!');
+        throw new Error('Gommo credentials chưa được cấu hình. Vào Profile → Gommo AI để nhập Domain và Access Token.');
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // GEMINI PATH (only for Gemini provider models)
     // ═══════════════════════════════════════════════════════════════
     if (!apiKey?.trim()) {
         console.error('[CharacterGen] ❌ No API key');
