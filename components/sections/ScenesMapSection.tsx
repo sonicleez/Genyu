@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table, LayoutGrid, Trash2, Plus, ImageMinus, ChevronDown, ChevronRight, Zap, Image as ImageIcon, Wind, Clock, Sun, StopCircle } from 'lucide-react';
+import { Table, LayoutGrid, Trash2, Plus, ImageMinus, ChevronDown, ChevronRight, Zap, Image as ImageIcon, Wind, Clock, Sun, StopCircle, MapPin } from 'lucide-react';
 import { SceneRow } from '../scenes/SceneRow';
 import { StoryBoardCard } from '../scenes/StoryBoardCard';
 import { Tooltip } from '../common/Tooltip';
@@ -48,10 +48,12 @@ interface ScenesMapSectionProps {
     setDragOverIndex: (idx: number | null) => void;
     onClearAllImages: () => void;
     onInsertAngles?: (sceneId: string, selections: { value: string; customPrompt?: string }[], sourceImage: string) => void;
-    onExpandScene?: (sceneId: string) => void;   // [New]
-    isExpandingSequence?: boolean;               // [New]
+    onExpandScene?: (sceneId: string) => void;
+    isExpandingSequence?: boolean;
     scriptLanguage?: string;
     customScriptLanguage?: string;
+    onOpenLocationLibrary?: () => void;  // NEW: Open Location Library panel
+    locationCount?: number;               // NEW: Number of locations in library
 }
 
 export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
@@ -96,10 +98,12 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
     onInsertAngles,
     analyzeRaccord,
     suggestNextShot,
-    onExpandScene,      // [New]
-    isExpandingSequence, // [New]
+    onExpandScene,
+    isExpandingSequence,
     scriptLanguage,
-    customScriptLanguage
+    customScriptLanguage,
+    onOpenLocationLibrary,
+    locationCount = 0
 }) => {
     const [collapsedGroups, setCollapsedGroups] = React.useState<Record<string, boolean>>({});
     const [activeGroupMenu, setActiveGroupMenu] = React.useState<string | null>(null);
@@ -136,6 +140,23 @@ export const ScenesMapSection: React.FC<ScenesMapSectionProps> = ({
                             <Zap size={11} className={showDOP ? 'animate-pulse' : ''} />
                             DOP Assistant
                         </button>
+
+                        {/* Location Library Button (NEW) */}
+                        {onOpenLocationLibrary && (
+                            <button
+                                onClick={onOpenLocationLibrary}
+                                className="h-8 px-3 flex items-center gap-2 font-black text-[9px] rounded-lg transition-all uppercase tracking-widest border shadow-inner bg-gray-900/80 text-amber-400 border-gray-700/50 hover:border-amber-500/50 hover:bg-amber-500/10"
+                                title="Location Library - Shared Environment Concepts"
+                            >
+                                <MapPin size={11} />
+                                Locations
+                                {locationCount > 0 && (
+                                    <span className="text-[8px] bg-amber-500/20 px-1.5 py-0.5 rounded font-bold">
+                                        {locationCount}
+                                    </span>
+                                )}
+                            </button>
+                        )}
                     </div>
                 </div>
 
