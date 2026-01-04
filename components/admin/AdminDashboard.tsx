@@ -452,57 +452,150 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                 {/* DOP Learning Tab */}
                 {activeTab === 'dop' && (
                     <div className="space-y-6">
+                        {/* Model Performance Table */}
                         <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
                             <div className="p-4 border-b border-gray-800">
-                                <h3 className="text-lg font-semibold text-white">Model Performance (DOP Learning)</h3>
+                                <h3 className="text-lg font-semibold text-white">📊 Model Performance</h3>
+                                <p className="text-sm text-gray-500">DOP tracks performance per model to optimize prompts</p>
                             </div>
                             <table className="w-full">
                                 <thead className="bg-gray-800">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Model Type</th>
-                                        <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Total Generations</th>
+                                        <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Model</th>
+                                        <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Generations</th>
                                         <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Approved</th>
+                                        <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Rejected</th>
                                         <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Approval Rate</th>
                                         <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Avg Quality</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-800">
-                                    {dopStats.map((model, i) => (
-                                        <tr key={i} className="hover:bg-gray-800/50">
-                                            <td className="px-4 py-3">
-                                                <span className={`px-2 py-1 rounded text-sm font-mono ${model.model_type === 'gemini' ? 'bg-blue-900/50 text-blue-400' :
-                                                    model.model_type === 'imagen' ? 'bg-green-900/50 text-green-400' :
-                                                        'bg-yellow-900/50 text-yellow-400'
-                                                    }`}>
-                                                    {model.model_type}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-white font-mono">
-                                                {model.total_generations?.toLocaleString()}
-                                            </td>
-                                            <td className="px-4 py-3 text-green-400 font-mono">
-                                                {model.approved_count?.toLocaleString()}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-24 h-2 bg-gray-700 rounded-full overflow-hidden">
-                                                        <div
-                                                            className="h-full bg-green-500"
-                                                            style={{ width: `${(model.approval_rate || 0) * 100}%` }}
-                                                        />
-                                                    </div>
-                                                    <span className="text-gray-400 text-sm">
-                                                        {((model.approval_rate || 0) * 100).toFixed(0)}%
+                                    {dopStats.map((model, i) => {
+                                        const rejectedCount = (model.total_generations || 0) - (model.approved_count || 0);
+                                        return (
+                                            <tr key={i} className="hover:bg-gray-800/50">
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-1 rounded text-sm font-mono ${model.model_type?.includes('gemini') ? 'bg-blue-900/50 text-blue-400' :
+                                                            model.model_type?.includes('imagen') ? 'bg-green-900/50 text-green-400' :
+                                                                'bg-yellow-900/50 text-yellow-400'
+                                                        }`}>
+                                                        {model.model_type}
                                                     </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-yellow-400 font-mono">
-                                                {(model.avg_quality || 0).toFixed(2)}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                                <td className="px-4 py-3 text-white font-mono">
+                                                    {model.total_generations?.toLocaleString()}
+                                                </td>
+                                                <td className="px-4 py-3 text-green-400 font-mono">
+                                                    ✅ {model.approved_count?.toLocaleString()}
+                                                </td>
+                                                <td className="px-4 py-3 text-red-400 font-mono">
+                                                    ❌ {rejectedCount}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-20 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full ${(model.approval_rate || 0) > 0.7 ? 'bg-green-500' : (model.approval_rate || 0) > 0.4 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                                                style={{ width: `${(model.approval_rate || 0) * 100}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-gray-400 text-sm">
+                                                            {((model.approval_rate || 0) * 100).toFixed(0)}%
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-yellow-400 font-mono">
+                                                    ⭐ {(model.avg_quality_score || 0).toFixed(2)}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
+                        </div>
+
+                        {/* Rejection Breakdown */}
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                                    <AlertTriangle className="w-5 h-5 text-red-400" />
+                                    Rejection Reasons (Top)
+                                </h3>
+                                <div className="space-y-3">
+                                    {dopStats.length > 0 && dopStats[0]?.rejection_counts ? (
+                                        Object.entries(dopStats[0].rejection_counts)
+                                            .sort((a: any, b: any) => b[1] - a[1])
+                                            .slice(0, 8)
+                                            .map(([reason, count]: any) => (
+                                                <div key={reason} className="flex items-center justify-between">
+                                                    <span className="text-gray-300 text-sm">
+                                                        {reason === 'raccord_error' ? '🔗 Sai Raccord' :
+                                                            reason === 'character_mismatch' ? '👤 Nhân vật sai' :
+                                                                reason === 'wrong_outfit' ? '👔 Sai trang phục' :
+                                                                    reason === 'wrong_lighting' ? '💡 Sai ánh sáng' :
+                                                                        reason === 'wrong_background' ? '🏞️ Sai background' :
+                                                                            reason === 'quality_issue' ? '📉 Chất lượng' :
+                                                                                reason}
+                                                    </span>
+                                                    <span className="px-2 py-0.5 bg-red-900/50 text-red-400 text-xs rounded font-mono">
+                                                        {count}
+                                                    </span>
+                                                </div>
+                                            ))
+                                    ) : (
+                                        <p className="text-gray-500 text-sm">Chưa có rejection data</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                                    <CheckCircle2 className="w-5 h-5 text-green-400" />
+                                    Successful Patterns (Top)
+                                </h3>
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {dopStats.length > 0 && dopStats[0]?.successful_patterns ? (
+                                        dopStats[0].successful_patterns.slice(0, 10).map((pattern: string, i: number) => (
+                                            <span key={i} className="inline-block px-2 py-1 bg-green-900/30 text-green-400 text-xs rounded mr-2 mb-1">
+                                                {pattern}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <p className="text-gray-500 text-sm">DOP sẽ học patterns từ approved prompts</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* How DOP Uses Knowledge */}
+                        <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-xl border border-purple-500/30 p-6">
+                            <h3 className="text-lg font-semibold text-white mb-4">🧠 Cách DOP Vận Dụng Kiến Thức</h3>
+                            <div className="grid grid-cols-3 gap-4 text-sm">
+                                <div className="bg-black/30 rounded-lg p-4">
+                                    <h4 className="text-purple-400 font-semibold mb-2">1️⃣ Thu thập Data</h4>
+                                    <ul className="text-gray-400 space-y-1">
+                                        <li>• Track mỗi generation</li>
+                                        <li>• Record prompt + keywords</li>
+                                        <li>• Lưu approval/rejection</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-black/30 rounded-lg p-4">
+                                    <h4 className="text-blue-400 font-semibold mb-2">2️⃣ Phân Tích Pattern</h4>
+                                    <ul className="text-gray-400 space-y-1">
+                                        <li>• Keywords nào → Approved?</li>
+                                        <li>• Keywords nào → Rejected?</li>
+                                        <li>• Model nào tốt với gì?</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-black/30 rounded-lg p-4">
+                                    <h4 className="text-green-400 font-semibold mb-2">3️⃣ Áp Dụng</h4>
+                                    <ul className="text-gray-400 space-y-1">
+                                        <li>• Ưu tiên successful patterns</li>
+                                        <li>• Tránh failure patterns</li>
+                                        <li>• Chọn model phù hợp</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

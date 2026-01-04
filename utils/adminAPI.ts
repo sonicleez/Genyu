@@ -289,6 +289,79 @@ export async function getDOPModelStats(): Promise<any[]> {
 }
 
 /**
+ * Get comprehensive DOP learning details including rejection patterns
+ */
+export async function getDOPLearningDetails(): Promise<{
+    models: any[];
+    rejectionStats: any;
+    learningPatterns: any;
+    recentRejections: any[];
+}> {
+    try {
+        // Get model learnings
+        const { data: models } = await supabase
+            .from('dop_model_learnings')
+            .select('*')
+            .order('total_generations', { ascending: false });
+
+        // Get recent rejections
+        const { data: recentRejections } = await supabase
+            .from('dop_prompt_records')
+            .select('id, model_type, rejection_reasons, rejection_notes, rejected_at, keywords, prompt_used')
+            .eq('was_rejected', true)
+            .order('rejected_at', { ascending: false })
+            .limit(50);
+
+        // Calculate rejection stats per reason
+        const rejectionStats: Record<string, number> = {};
+        (recentRejections || []).forEach(r => {
+            (r.rejection_reasons || []).forEach((reason: string) => {
+                rejectionStats[reason] = (rejectionStats[reason] || 0) + 1;
+            });
+        });
+
+        // Get learning patterns from approved prompts
+        const { data: approvedRecords } = await supabase
+            .from('dop_prompt_records')
+            .select('model_type, keywords, quality_score')
+            .eq('was_approved', true)
+            .not('quality_score', 'is', null)
+            .order('quality_score', { ascending: false })
+            .limit(100);
+
+        // Aggregate learning patterns
+        const learningPatterns: Record<string, { count: number; avgScore: number }> = {};
+        (approvedRecords || []).forEach(r => {
+            (r.keywords || []).forEach((kw: string) => {
+                if (!learningPatterns[kw]) {
+                    learningPatterns[kw] = { count: 0, avgScore: 0 };
+                }
+                learningPatterns[kw].count++;
+                learningPatterns[kw].avgScore =
+                    (learningPatterns[kw].avgScore * (learningPatterns[kw].count - 1) + (r.quality_score || 0))
+                    / learningPatterns[kw].count;
+            });
+        });
+
+        console.log('[Admin] Loaded DOP learning details');
+        return {
+            models: models || [],
+            rejectionStats,
+            learningPatterns,
+            recentRejections: recentRejections || []
+        };
+    } catch (e) {
+        console.error('[Admin] Failed to fetch DOP learning details:', e);
+        return {
+            models: [],
+            rejectionStats: {},
+            learningPatterns: {},
+            recentRejections: []
+        };
+    }
+}
+
+/**
  * Subscribe to real-time activity updates
  */
 export function subscribeToActivity(callback: (payload: any) => void) {
