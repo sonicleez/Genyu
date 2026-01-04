@@ -2,10 +2,11 @@
  * Quality Rating Component
  * 
  * Allows user to rate generated images for DOP learning.
- * Shows 👍 for approval and 👎 with rejection reasons in anchored popup.
+ * Shows 👍 for approval and 👎 with rejection reasons in portal modal.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ThumbsUp, ThumbsDown, AlertTriangle, X, CheckCircle2 } from 'lucide-react';
 import { approvePrompt, rejectPrompt, RejectReason } from '../../utils/dopLearning';
 
@@ -158,23 +159,23 @@ export function QualityRating({
                 </button>
             </div>
 
-            {/* Fixed Center Modal - prevents clipping */}
-            {showRejectMenu && (
+            {/* Portal Modal - renders at document.body to prevent layout issues */}
+            {showRejectMenu && createPortal(
                 <>
                     {/* Backdrop */}
                     <div
-                        className="fixed inset-0 z-[199] bg-black/40 backdrop-blur-sm"
+                        className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm"
                         onClick={() => setShowRejectMenu(false)}
                     />
                     {/* Modal */}
                     <div
-                        className="fixed z-[200] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                            bg-gray-900/98 backdrop-blur-xl border border-gray-700/80 rounded-xl shadow-2xl
-                            w-[320px] overflow-hidden"
+                        className="fixed z-[10000] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                            bg-gray-900 border border-gray-700 rounded-xl shadow-2xl
+                            w-[340px] overflow-hidden"
                         onClick={e => e.stopPropagation()}
                     >
                         {/* Header */}
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700/50 bg-gradient-to-r from-red-900/30 to-orange-900/20">
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 bg-gradient-to-r from-red-900/40 to-orange-900/30">
                             <span className="text-sm font-bold text-white flex items-center gap-2">
                                 <AlertTriangle size={16} className="text-red-400" />
                                 Chọn lý do lỗi
@@ -188,19 +189,19 @@ export function QualityRating({
                         </div>
 
                         {/* Options Grid */}
-                        <div className="p-3 grid grid-cols-2 gap-2 max-h-[280px] overflow-y-auto">
+                        <div className="p-3 grid grid-cols-2 gap-2">
                             {REJECTION_OPTIONS.map(opt => {
                                 const isSelected = selectedReasons.includes(opt.value);
                                 return (
                                     <button
                                         key={opt.value}
                                         onClick={() => toggleReason(opt.value)}
-                                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-left text-xs transition-all ${isSelected
-                                            ? 'bg-red-500/25 border border-red-500/50 text-red-300 shadow-lg shadow-red-500/20'
-                                            : 'bg-gray-800/60 border border-gray-700/50 text-gray-300 hover:bg-gray-700/60 hover:border-gray-600'
+                                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-xs transition-all ${isSelected
+                                            ? 'bg-red-500/30 border border-red-500/60 text-red-200 shadow-lg shadow-red-500/20'
+                                            : 'bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 hover:border-gray-600'
                                             }`}
                                     >
-                                        <span className="text-sm">{opt.emoji}</span>
+                                        <span className="text-base">{opt.emoji}</span>
                                         <span className="truncate flex-1">{opt.label}</span>
                                         {isSelected && <CheckCircle2 size={14} className="text-red-400 flex-shrink-0" />}
                                     </button>
@@ -209,11 +210,11 @@ export function QualityRating({
                         </div>
 
                         {/* Footer */}
-                        <div className="px-3 py-3 border-t border-gray-700/50 flex gap-2 bg-gray-800/30">
+                        <div className="px-3 py-3 border-t border-gray-700 flex gap-2 bg-gray-800/50">
                             <button
                                 onClick={handleReject}
                                 disabled={selectedReasons.length === 0 || isRating}
-                                className={`flex-1 px-4 py-2 rounded-lg font-bold text-sm transition-all ${selectedReasons.length > 0
+                                className={`flex-1 px-4 py-2.5 rounded-lg font-bold text-sm transition-all ${selectedReasons.length > 0
                                     ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30'
                                     : 'bg-gray-700 text-gray-500 cursor-not-allowed'
                                     }`}
@@ -225,13 +226,14 @@ export function QualityRating({
                                     setSelectedReasons([]);
                                     setShowRejectMenu(false);
                                 }}
-                                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition-colors"
+                                className="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition-colors"
                             >
                                 Hủy
                             </button>
                         </div>
                     </div>
-                </>
+                </>,
+                document.body
             )}
         </div>
     );
