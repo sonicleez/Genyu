@@ -876,7 +876,10 @@ DO NOT invent new environments or change the location. This is NOT a different p
             for (const char of selectedChars) {
                 const charRefs: { type: string, img: string }[] = [];
                 if (char.faceImage) charRefs.push({ type: 'FACE ID', img: char.faceImage });
-                if (char.bodyImage) charRefs.push({ type: 'FULL BODY', img: char.bodyImage });
+                // Only add bodyImage if it's different from masterImage (avoid duplicate)
+                if (char.bodyImage && char.bodyImage !== char.masterImage) {
+                    charRefs.push({ type: 'FULL BODY', img: char.bodyImage });
+                }
 
                 // Add more views if using Pro
                 if (isPro) {
@@ -884,9 +887,12 @@ DO NOT invent new environments or change the location. This is NOT a different p
                     if (char.backImage) charRefs.push({ type: 'BACK VIEW', img: char.backImage });
                 }
 
-                // Fallback to master if no specific views exist
+                // Fallback to master if no specific views exist (or if bodyImage was skipped)
                 if (charRefs.length === 0 && char.masterImage) {
                     charRefs.push({ type: 'PRIMARY', img: char.masterImage });
+                } else if (!charRefs.some(r => r.type === 'FULL BODY') && char.masterImage) {
+                    // Add masterImage as primary body reference
+                    charRefs.push({ type: 'FULL BODY', img: char.masterImage });
                 }
 
                 // PARALLEL loading of all character reference images

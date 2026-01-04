@@ -428,7 +428,10 @@ ${charStyle.promptInjection.negative}
 
             const description = char.description || "Character";
             const facePrompt = `${consistencyInstruction}\n\n(STRICT CAMERA: EXTREME CLOSE-UP - FACE ID ON WHITE BACKGROUND) Generate a highly detailed Face ID close-up of this character: ${description}. Focus on capturing the exact facial features and expression from the reference. The background must be pure solid white.`;
-            const bodyPrompt = `${consistencyInstruction}\n\n(STRICT CAMERA: FULL BODY HEAD-TO-TOE WIDE SHOT ON WHITE BACKGROUND) Generate a Full Body character design sheet (Front View, T-Pose or A-Pose). MUST CAPTURE HEAD-TO-TOE INCLUDING VISIBLE FEET. Description: ${description}. The clothing must match the reference image's color and texture exactly. The background must be pure solid white.`;
+
+            // OPTIMIZATION: Skip body generation - masterImage is already full body
+            // This saves 1 API credit per character generation
+            console.log('[CharGen] 💰 Skipping body generation - using masterImage as body reference');
 
             if (!apiKey) {
                 updateCharacter(id, { isAnalyzing: false });
@@ -443,23 +446,18 @@ ${charStyle.promptInjection.negative}
                 ? { domain: state.gommoDomain, accessToken: state.gommoAccessToken }
                 : undefined;
 
-            let [faceUrl, bodyUrl] = await Promise.all([
-                callCharacterImageAPI(apiKey, facePrompt, "1:1", model, char.masterImage, gommoCredentials),
-                callCharacterImageAPI(apiKey, bodyPrompt, "9:16", model, char.masterImage, gommoCredentials),
-            ]);
+            // Only generate Face ID - Body uses masterImage directly
+            let faceUrl = await callCharacterImageAPI(apiKey, facePrompt, "1:1", model, char.masterImage, gommoCredentials);
 
             if (userId) {
                 if (faceUrl?.startsWith('data:')) {
                     faceUrl = await uploadImageToSupabase(faceUrl, 'project-assets', `${userId}/characters/${id}_face_${Date.now()}.jpg`);
                 }
-                if (bodyUrl?.startsWith('data:')) {
-                    bodyUrl = await uploadImageToSupabase(bodyUrl, 'project-assets', `${userId}/characters/${id}_body_${Date.now()}.jpg`);
-                }
             }
 
             updateCharacter(id, {
                 faceImage: faceUrl || undefined,
-                bodyImage: bodyUrl || undefined,
+                bodyImage: char.masterImage, // Use masterImage as body reference (already full body)
                 isAnalyzing: false
             });
 
