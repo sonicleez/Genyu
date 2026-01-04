@@ -179,11 +179,6 @@ export const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                                 onEdit={character.faceImage ? () => onEditImage(character.id, character.faceImage!, 'face') : undefined}
                                 subLabel="Gương mặt"
                             />
-                            {character.faceImage && (
-                                <div className="mt-1 flex justify-center">
-                                    <QualityRating size="sm" className="bg-gray-800/50 px-2 py-1 rounded" />
-                                </div>
-                            )}
                         </div>
                         {/* 2. Full Body */}
                         <div>
@@ -196,11 +191,6 @@ export const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                                 aspect="portrait"
                                 subLabel="Toàn thân"
                             />
-                            {character.bodyImage && (
-                                <div className="mt-1 flex justify-center">
-                                    <QualityRating size="sm" className="bg-gray-800/50 px-2 py-1 rounded" />
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>

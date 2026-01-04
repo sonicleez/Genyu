@@ -142,17 +142,35 @@ export async function syncUserStatsToCloud(userId: string, stats: any) {
 export async function fetchUserStatsFromCloud(userId: string) {
     if (!userId) return null;
     try {
-        const { data, error } = await supabase
+        // First try user_global_stats table (new schema)
+        const { data: globalStats, error: globalError } = await supabase
+            .from('user_global_stats')
+            .select('stats')
+            .eq('user_id', userId)
+            .single();
+
+        if (!globalError && globalStats?.stats) {
+            console.log('[Storage] ✅ Loaded stats from user_global_stats');
+            return globalStats.stats;
+        }
+
+        // Fallback to profiles.usage_stats (old schema)
+        const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('usage_stats')
             .eq('id', userId)
             .single();
 
-        if (error) throw error;
-        return data?.usage_stats;
+        if (!profileError && profileData?.usage_stats) {
+            console.log('[Storage] ✅ Loaded stats from profiles.usage_stats (fallback)');
+            return profileData.usage_stats;
+        }
+
+        console.log('[Storage] No stats found for user, starting fresh');
+        return null;
     } catch (e) {
         console.warn("[Storage] Failed to fetch usage stats:", e);
-        return null; // Return null to fallback to local project stats
+        return null;
     }
 }
 
