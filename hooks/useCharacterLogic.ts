@@ -10,6 +10,7 @@ import { normalizePromptAsync, needsNormalization, containsVietnamese, formatNor
 import { recordPrompt, approvePrompt, searchSimilarPrompts } from '../utils/dopLearning';
 import { performQualityCheck, shouldAutoRetry, generateRefinedPrompt } from '../utils/qualityScoring';
 import { analyzeAndEnhance, predictSuccess, getInsights } from '../utils/dopIntelligence';
+import { incrementGlobalStats, recordGeneratedImage } from '../utils/userGlobalStats';
 
 export function useCharacterLogic(
     state: ProjectState,
@@ -803,7 +804,31 @@ CRITICAL: ONE SINGLE FULL-BODY IMAGE on solid white background. Face must be rec
                         characters: (currentStats.characters || 0) + 1,
                         lastGeneratedAt: new Date().toISOString()
                     };
-                    if (userId) syncUserStatsToCloud(userId, updatedStats);
+                    if (userId) {
+                        syncUserStatsToCloud(userId, updatedStats);
+
+                        // Track in GLOBAL stats (persists across projects)
+                        const providerType = model.includes('gemini') ? 'gemini' : 'gommo';
+                        incrementGlobalStats(userId, {
+                            images: 1,
+                            characters: 1,
+                            gemini: providerType === 'gemini' ? 1 : 0,
+                            gommo: providerType === 'gommo' ? 1 : 0,
+                        });
+
+                        // Record image to history
+                        recordGeneratedImage(userId, {
+                            projectId: s.projectName || 'unknown',
+                            imageUrl: finalUrl,
+                            generationType: 'character',
+                            characterId: charId,
+                            prompt: promptToSend,
+                            modelId: model,
+                            modelType: providerType,
+                            aspectRatio: aspectRatio,
+                            resolution: '1K',
+                        });
+                    }
                     return { ...s, usageStats: updatedStats };
                 });
             } else {

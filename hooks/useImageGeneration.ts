@@ -14,6 +14,7 @@ import { GommoAI, urlToBase64 } from '../utils/gommoAI';
 import { IMAGE_MODELS } from '../utils/appConstants';
 import { normalizePrompt, normalizePromptAsync, formatNormalizationLog, needsNormalization, containsVietnamese } from '../utils/promptNormalizer';
 import { recordPrompt, approvePrompt } from '../utils/dopLearning';
+import { incrementGlobalStats, recordGeneratedImage } from '../utils/userGlobalStats';
 // Helper function to clean VEO-specific tokens from prompt for image generation
 const cleanPromptForImageGen = (prompt: string): string => {
     return prompt
@@ -1216,6 +1217,30 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 // Sync to Supabase if userId is present
                 if (userId) {
                     syncUserStatsToCloud(userId, updatedStats);
+
+                    // Track in GLOBAL stats (persists across projects)
+                    incrementGlobalStats(userId, {
+                        images: 1,
+                        scenes: 1,
+                        gemini: promptProvider === 'gemini' ? 1 : 0,
+                        gommo: promptProvider === 'gommo' ? 1 : 0,
+                        resolution1K: resolutionKey === '1K' ? 1 : 0,
+                        resolution2K: resolutionKey === '2K' ? 1 : 0,
+                        resolution4K: resolutionKey === '4K' ? 1 : 0,
+                    });
+
+                    // Record image to history
+                    recordGeneratedImage(userId, {
+                        projectId: currentState.projectName || 'unknown',
+                        imageUrl: imageUrl,
+                        generationType: 'scene',
+                        sceneId: sceneId,
+                        prompt: promptToSend,
+                        modelId: modelToUse,
+                        modelType: promptProvider,
+                        aspectRatio: currentState.aspectRatio,
+                        resolution: resolutionKey,
+                    });
                 }
 
                 return {
