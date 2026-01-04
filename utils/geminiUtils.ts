@@ -1,20 +1,48 @@
 import { GoogleGenAI } from "@google/genai";
 
+// ═══════════════════════════════════════════════════════════════
+// IMAGE CACHE - Avoids re-fetching same images during generation
+// ═══════════════════════════════════════════════════════════════
+const imageCache = new Map<string, { data: string; mimeType: string }>();
+const CACHE_MAX_SIZE = 50; // Max cached images
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+let cacheTimestamp = Date.now();
+
+// Clear cache if too old
+const checkCacheExpiry = () => {
+    if (Date.now() - cacheTimestamp > CACHE_TTL) {
+        imageCache.clear();
+        cacheTimestamp = Date.now();
+        console.log('[ImageCache] 🗑️ Cache cleared (TTL expired)');
+    }
+};
+
 // Helper function to safely extract base64 data from both URL and base64 images
+// WITH CACHING to avoid duplicate fetches
 export const safeGetImageData = async (imageStr: string): Promise<{ data: string; mimeType: string } | null> => {
     if (!imageStr) return null;
 
+    // Check cache first
+    checkCacheExpiry();
+    if (imageCache.has(imageStr)) {
+        console.log('[ImageCache] ⚡ Cache hit');
+        return imageCache.get(imageStr)!;
+    }
+
     try {
+        let result: { data: string; mimeType: string } | null = null;
+
         if (imageStr.startsWith('data:')) {
             const mimeType = imageStr.substring(5, imageStr.indexOf(';'));
             const data = imageStr.split('base64,')[1];
-            return { data, mimeType };
+            result = { data, mimeType };
         } else if (imageStr.startsWith('http')) {
+            const startTime = Date.now();
             const response = await fetch(imageStr);
             if (!response.ok) throw new Error('Failed to fetch image');
             const blob = await response.blob();
             const mimeType = blob.type || 'image/jpeg';
-            return new Promise((resolve) => {
+            result = await new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onloadend = () => resolve({
                     data: (reader.result as string).split(',')[1],
@@ -22,12 +50,31 @@ export const safeGetImageData = async (imageStr: string): Promise<{ data: string
                 });
                 reader.readAsDataURL(blob);
             });
+            console.log(`[ImageCache] 📥 Fetched in ${Date.now() - startTime}ms`);
         }
-        return null;
+
+        // Store in cache
+        if (result) {
+            if (imageCache.size >= CACHE_MAX_SIZE) {
+                // Remove oldest entry
+                const firstKey = imageCache.keys().next().value;
+                if (firstKey) imageCache.delete(firstKey);
+            }
+            imageCache.set(imageStr, result);
+        }
+
+        return result;
     } catch (error) {
         console.error('Error in safeGetImageData:', error);
         return null;
     }
+};
+
+// Export cache clear function for manual clearing
+export const clearImageCache = () => {
+    imageCache.clear();
+    cacheTimestamp = Date.now();
+    console.log('[ImageCache] 🗑️ Cache manually cleared');
 };
 
 export const callGeminiAPI = async (
