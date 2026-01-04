@@ -3,12 +3,13 @@ import {
     Users, Activity, Key, Database, TrendingUp, Image,
     MessageSquare, RefreshCw, ArrowLeft, Clock, Zap,
     Shield, AlertTriangle, CheckCircle2, XCircle, Trash2,
-    UserCog, Eye, Edit, Crown, KeyRound
+    UserCog, Eye, Edit, Crown, KeyRound, Plus
 } from 'lucide-react';
 import {
     getAdminUsers, getAdminStats, getRecentActivity, getDOPModelStats,
     subscribeToActivity, subscribeToUserActivity, getActiveSessions,
-    setUserRole, deleteUser, getFullUserDetails,
+    setUserRole, deleteUser, getFullUserDetails, getAPIKeysOverview,
+    setUserAPIKey, deleteUserAPIKey,
     AdminUser, AdminStats
 } from '../../utils/adminAPI';
 
@@ -18,7 +19,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin }) => {
-    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'activity' | 'dop' | 'live'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'activity' | 'dop' | 'live' | 'keys'>('overview');
     const [stats, setStats] = useState<AdminStats | null>(null);
     const [users, setUsers] = useState<AdminUser[]>([]);
     const [activity, setActivity] = useState<any[]>([]);
@@ -28,21 +29,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
     const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
     const [activeSessions, setActiveSessions] = useState<any[]>([]);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [apiKeys, setApiKeys] = useState<any[]>([]);
+
+    // Key management modal state
+    const [showKeyModal, setShowKeyModal] = useState(false);
+    const [keyModalUser, setKeyModalUser] = useState<AdminUser | null>(null);
+    const [newKeyType, setNewKeyType] = useState('gemini');
+    const [newKeyValue, setNewKeyValue] = useState('');
 
     // Load data
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const [statsData, usersData, activityData, dopData] = await Promise.all([
+            const [statsData, usersData, activityData, dopData, keysData] = await Promise.all([
                 getAdminStats(),
                 getAdminUsers(),
                 getRecentActivity(50),
-                getDOPModelStats()
+                getDOPModelStats(),
+                getAPIKeysOverview()
             ]);
             setStats(statsData);
             setUsers(usersData);
             setActivity(activityData);
             setDopStats(dopData);
+            setApiKeys(keysData);
         } catch (e) {
             console.error('Failed to load admin data:', e);
         }
@@ -103,6 +113,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
         // Could load more details here
     };
 
+    // API Key management
+    const handleAddKey = async () => {
+        if (!keyModalUser || !newKeyValue) return;
+        setActionLoading('key');
+        const success = await setUserAPIKey(keyModalUser.id, newKeyType, newKeyValue);
+        if (success) {
+            loadData();
+            setShowKeyModal(false);
+            setNewKeyValue('');
+        }
+        setActionLoading(null);
+    };
+
+    const handleDeleteKey = async (userId: string, keyType: string) => {
+        if (!confirm(`Delete ${keyType} key for this user?`)) return;
+        setActionLoading(keyType);
+        const success = await deleteUserAPIKey(userId, keyType);
+        if (success) loadData();
+        setActionLoading(null);
+    };
+
+    const openKeyModal = (user: AdminUser) => {
+        setKeyModalUser(user);
+        setShowKeyModal(true);
+    };
+
     if (!isAdmin) {
         return (
             <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center">
@@ -156,6 +192,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                     {[
                         { id: 'overview', label: 'Overview', icon: TrendingUp },
                         { id: 'users', label: 'Users', icon: Users },
+                        { id: 'keys', label: `API Keys (${apiKeys.length})`, icon: Key },
                         { id: 'live', label: `Live (${activeSessions.length})`, icon: Eye },
                         { id: 'activity', label: 'Activity', icon: Activity },
                         { id: 'dop', label: 'DOP Learning', icon: Database }
@@ -476,8 +513,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                                             <tr key={i} className="hover:bg-gray-800/50">
                                                 <td className="px-4 py-3">
                                                     <span className={`px-2 py-1 rounded text-sm font-mono ${model.model_type?.includes('gemini') ? 'bg-blue-900/50 text-blue-400' :
-                                                            model.model_type?.includes('imagen') ? 'bg-green-900/50 text-green-400' :
-                                                                'bg-yellow-900/50 text-yellow-400'
+                                                        model.model_type?.includes('imagen') ? 'bg-green-900/50 text-green-400' :
+                                                            'bg-yellow-900/50 text-yellow-400'
                                                         }`}>
                                                         {model.model_type}
                                                     </span>
@@ -594,6 +631,152 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                                         <li>• Tránh failure patterns</li>
                                         <li>• Chọn model phù hợp</li>
                                     </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* API Keys Tab */}
+                {activeTab === 'keys' && (
+                    <div className="space-y-6">
+                        <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+                            <div className="p-4 border-b border-gray-800 flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                        <Key className="w-5 h-5 text-yellow-400" />
+                                        User API Keys
+                                    </h3>
+                                    <p className="text-sm text-gray-500">Manage API keys assigned to users</p>
+                                </div>
+                            </div>
+                            <table className="w-full">
+                                <thead className="bg-gray-800">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">User</th>
+                                        <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Key Type</th>
+                                        <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Preview</th>
+                                        <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Created</th>
+                                        <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-800">
+                                    {apiKeys.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                                                No API keys found. Keys are stored when users add them in their profile.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        apiKeys.map((key, i) => (
+                                            <tr key={i} className="hover:bg-gray-800/50">
+                                                <td className="px-4 py-3 text-white text-sm">
+                                                    {key.email}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-1 rounded text-xs font-mono ${key.key_type === 'gemini' ? 'bg-blue-900/50 text-blue-400' :
+                                                            key.key_type === 'gommo' ? 'bg-yellow-900/50 text-yellow-400' :
+                                                                'bg-gray-700 text-gray-300'
+                                                        }`}>
+                                                        {key.key_type}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 font-mono text-gray-400 text-sm">
+                                                    {key.key_preview || '***...***'}
+                                                </td>
+                                                <td className="px-4 py-3 text-gray-400 text-sm">
+                                                    {new Date(key.created_at).toLocaleDateString('vi-VN')}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <button
+                                                        onClick={() => handleDeleteKey(key.user_id, key.key_type)}
+                                                        disabled={actionLoading === key.key_type}
+                                                        className="p-1.5 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50"
+                                                        title="Delete key"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Users without keys */}
+                        <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                                <Plus className="w-5 h-5 text-green-400" />
+                                Assign API Key to User
+                            </h3>
+                            <div className="grid grid-cols-4 gap-4">
+                                {users.slice(0, 8).map(user => (
+                                    <button
+                                        key={user.id}
+                                        onClick={() => openKeyModal(user)}
+                                        className="p-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors text-left"
+                                    >
+                                        <p className="text-white text-sm font-medium truncate">{user.email}</p>
+                                        <p className="text-gray-500 text-xs mt-1">
+                                            Click to add key
+                                        </p>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Add Key Modal */}
+                {showKeyModal && keyModalUser && (
+                    <div className="fixed inset-0 bg-black/80 z-60 flex items-center justify-center" onClick={() => setShowKeyModal(false)}>
+                        <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-96" onClick={e => e.stopPropagation()}>
+                            <h3 className="text-lg font-semibold text-white mb-4">
+                                Add API Key for {keyModalUser.email}
+                            </h3>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Key Type</label>
+                                    <select
+                                        value={newKeyType}
+                                        onChange={e => setNewKeyType(e.target.value)}
+                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white"
+                                    >
+                                        <option value="gemini">Gemini API Key</option>
+                                        <option value="gommo">Gommo API Key</option>
+                                        <option value="openai">OpenAI API Key</option>
+                                        <option value="anthropic">Anthropic API Key</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">API Key Value</label>
+                                    <input
+                                        type="password"
+                                        value={newKeyValue}
+                                        onChange={e => setNewKeyValue(e.target.value)}
+                                        placeholder="Paste API key here..."
+                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white"
+                                    />
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={handleAddKey}
+                                        disabled={!newKeyValue || actionLoading === 'key'}
+                                        className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 
+                                            text-white rounded-lg font-medium transition-colors"
+                                    >
+                                        {actionLoading === 'key' ? 'Saving...' : 'Save Key'}
+                                    </button>
+                                    <button
+                                        onClick={() => setShowKeyModal(false)}
+                                        className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg"
+                                    >
+                                        Cancel
+                                    </button>
                                 </div>
                             </div>
                         </div>
