@@ -13,6 +13,7 @@ export interface AdminUser {
 
     // Profile data
     display_name?: string;
+    subscription_tier?: string;
 
     // Global stats
     total_images: number;
@@ -84,7 +85,7 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
         // Get profiles with global stats
         const { data: profiles, error: profileError } = await supabase
             .from('profiles')
-            .select('id, email, display_name, created_at, updated_at');
+            .select('id, email, display_name, subscription_tier, created_at, updated_at');
 
         if (profileError) {
             console.error('[Admin] Profiles error:', profileError);
@@ -124,6 +125,7 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
                 id: p.id,
                 email: p.email || 'unknown',
                 display_name: p.display_name,
+                subscription_tier: p.subscription_tier || 'free',
                 created_at: p.created_at,
                 last_sign_in_at: null,
                 total_images: userStats.totalImages || 0,
@@ -466,6 +468,7 @@ export async function updateUser(userId: string, data: {
     display_name?: string;
     email?: string;
     role?: string;
+    subscription_tier?: string;
 }): Promise<boolean> {
     try {
         const { error } = await supabase

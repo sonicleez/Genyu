@@ -8,7 +8,7 @@ import {
 import {
     getAdminUsers, getAdminStats, getRecentActivity, getDOPModelStats,
     subscribeToActivity, subscribeToUserActivity, getActiveSessions,
-    setUserRole, deleteUser, getFullUserDetails, getAPIKeysOverview,
+    setUserRole, deleteUser, updateUser, getFullUserDetails, getAPIKeysOverview,
     setUserAPIKey, deleteUserAPIKey,
     AdminUser, AdminStats
 } from '../../utils/adminAPI';
@@ -284,11 +284,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                                 <tr>
                                     <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">User</th>
                                     <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Role</th>
+                                    <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Tier</th>
                                     <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Images</th>
                                     <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Scenes</th>
                                     <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Characters</th>
                                     <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Provider</th>
-                                    <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Last Activity</th>
                                     <th className="px-4 py-3 text-left text-xs text-gray-400 uppercase">Actions</th>
                                 </tr>
                             </thead>
@@ -323,6 +323,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                                                     <span className="px-2 py-1 bg-gray-700 text-gray-400 text-xs rounded">User</span>
                                                 )}
                                             </td>
+                                            <td className="px-4 py-3">
+                                                <select
+                                                    value={user.subscription_tier || 'free'}
+                                                    onChange={async (e) => {
+                                                        const newTier = e.target.value;
+                                                        const success = await updateUser(user.id, { subscription_tier: newTier });
+                                                        if (success) loadData();
+                                                    }}
+                                                    className={`px-2 py-1 rounded text-xs font-bold border-0 cursor-pointer ${user.subscription_tier === 'pro'
+                                                        ? 'bg-orange-500/20 text-orange-400'
+                                                        : 'bg-gray-700 text-gray-400'
+                                                        }`}
+                                                >
+                                                    <option value="free">FREE</option>
+                                                    <option value="pro">⭐ PRO</option>
+                                                </select>
+                                            </td>
                                             <td className="px-4 py-3 text-white font-mono">{user.total_images}</td>
                                             <td className="px-4 py-3 text-cyan-400 font-mono">{user.scenes_generated}</td>
                                             <td className="px-4 py-3 text-pink-400 font-mono">{user.characters_generated}</td>
@@ -335,9 +352,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                                                         Go:{user.gommo_images}
                                                     </span>
                                                 </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-gray-500 text-sm">
-                                                {user.last_activity ? new Date(user.last_activity).toLocaleString('vi-VN') : 'Never'}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex gap-1">
@@ -821,7 +835,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 };
 
