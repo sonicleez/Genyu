@@ -1091,6 +1091,10 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             const modelToUse = currentState.imageModel || 'gemini-3-pro-image-preview';
             let promptToSend = finalImagePrompt;
 
+            // TIMING: Log prep phase duration
+            const prepTime = Date.now() - startTime;
+            console.log(`[ImageGen] ⏱️ PREP completed in ${prepTime}ms (${parts.filter((p: any) => p.inlineData).length} refs loaded)`);
+
             // Debug: Check if model is correctly detected as gemini type
             const shouldNormalize = needsNormalization(modelToUse);
             console.log('[ImageGen] Model check:', modelToUse, '| Needs normalization:', shouldNormalize);
@@ -1183,6 +1187,9 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 }
             }
 
+            // TIMING: Start API call
+            const apiStartTime = Date.now();
+
             const { imageUrl, mediaId } = await callAIImageAPI(
                 promptToSend,
                 userApiKey,
@@ -1192,6 +1199,11 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 currentState.resolution || '1K',
                 { domain: currentState.gommoDomain || '', accessToken: currentState.gommoAccessToken || '' }
             );
+
+            // TIMING: Log API call duration
+            const apiTime = Date.now() - apiStartTime;
+            const totalTime = Date.now() - startTime;
+            console.log(`[ImageGen] ⏱️ API call: ${apiTime}ms | TOTAL: ${totalTime}ms`);
 
             // Calculate estimated prompt tokens (rough: ~4 chars per token)
             const estimatedTokens = Math.ceil(promptToSend.length / 4);

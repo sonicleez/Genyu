@@ -43,18 +43,29 @@ export function QualityRating({
     const [showRejectMenu, setShowRejectMenu] = useState(false);
     const [selectedReasons, setSelectedReasons] = useState<RejectReason[]>([]);
     const containerRef = useRef<HTMLDivElement>(null);
+    const popupRef = useRef<HTMLDivElement>(null);
 
-    // Close menu when clicking outside
+    // Close menu when clicking outside (check both container and popup since popup is in portal)
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+            const target = e.target as Node;
+            const isInsideContainer = containerRef.current?.contains(target);
+            const isInsidePopup = popupRef.current?.contains(target);
+
+            if (!isInsideContainer && !isInsidePopup) {
                 setShowRejectMenu(false);
             }
         };
         if (showRejectMenu) {
-            document.addEventListener('mousedown', handleClickOutside);
+            // Use setTimeout to avoid immediate close from the button click
+            const timer = setTimeout(() => {
+                document.addEventListener('mousedown', handleClickOutside);
+            }, 10);
+            return () => {
+                clearTimeout(timer);
+                document.removeEventListener('mousedown', handleClickOutside);
+            };
         }
-        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showRejectMenu]);
 
     // Use prop or fallback to global (for async DOP recording)
@@ -172,6 +183,7 @@ export function QualityRating({
                     />
                     {/* Popup - separate from backdrop to avoid event issues */}
                     <div
+                        ref={popupRef}
                         className="fixed z-[9999] bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-[320px] overflow-hidden pointer-events-auto"
                         style={{
                             // Position relative to containerRef
