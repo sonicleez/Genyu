@@ -1490,7 +1490,8 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                             } : sc)
                         }));
 
-                        let MAX_DOP_RETRIES = 0; // Disabled for speed - user can rate manually
+                        // Max 1 retry: If still wrong, show error message for user review
+                        let MAX_DOP_RETRIES = 1;
                         let retryCount = 0;
                         let lastValidation = await validateRaccordWithVision(
                             currentImage,
@@ -1617,13 +1618,18 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
 
                                 // Construct Negative Prompt based on specific errors
                                 const negativeConstraints: string[] = [];
+                                let retryBoost = '';
+
                                 lastValidation.errors.forEach(e => {
                                     const desc = e.description.toLowerCase();
                                     if (e.type === 'character' || desc.includes('face') || desc.includes('person')) {
                                         negativeConstraints.push('wrong person', 'different face', 'extra people', 'ugly face', 'distorted face');
+                                        // STRONG IDENTITY FIX
+                                        retryBoost += ' !!! CRITICAL IDENTITY LOCK !!! Match the EXACT face from Face ID reference. Copy facial bone structure, eye shape, nose, mouth PRECISELY. Do NOT create a new person. ';
                                     }
                                     if (e.type === 'prop' || desc.includes('missing')) {
                                         negativeConstraints.push('missing object', 'floating objects', 'bad hands', 'mutated');
+                                        retryBoost += ' Ensure ALL props from the scene are VISIBLE and correctly positioned. ';
                                     }
                                     if (e.type === 'lighting') {
                                         negativeConstraints.push('bad lighting', 'wrong exposure', 'dark image');
@@ -1634,14 +1640,24 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                                     if (desc.includes('static background') || desc.includes('identical') || desc.includes('wallpaper')) {
                                         negativeConstraints.push('static background', 'identical composition', 'same pixels', 'exact match', 'repetitive');
                                         // JITTER FIX: Force camera movement
-                                        enhancedCorrection += ' (CAMERA MOVEMENT: Shift angle slightly! Dynamic perspective change! Do not reuse exact background pixels!)';
+                                        retryBoost += ' (CAMERA MOVEMENT: Shift angle slightly! Dynamic perspective change! Do not reuse exact background pixels!) ';
+                                    }
+                                    if (desc.includes('outfit') || desc.includes('clothing') || desc.includes('costume')) {
+                                        retryBoost += ' OUTFIT LOCK: Character MUST wear the EXACT same clothes as in the reference. Copy colors, patterns, accessories. ';
                                     }
                                 });
+
                                 const negativePrompt = negativeConstraints.length > 0
                                     ? `(${[...new Set(negativeConstraints)].join(', ')})`
                                     : undefined;
 
-                                await performImageGeneration(scene.id, enhancedCorrection, false, undefined, undefined, negativePrompt);
+                                // Construct enhanced retry prompt with corrections
+                                const retryPrompt = `${retryBoost}${enhancedCorrection || ''}`.trim() || undefined;
+
+                                console.log('[DOP] Retry with identity boost:', retryBoost.substring(0, 100));
+
+                                // Pass previous scene image as reference for continuity
+                                await performImageGeneration(scene.id, retryPrompt, false, prevScene.generatedImage, undefined, negativePrompt);
 
                                 // Re-validate
                                 const reUpdatedState = stateRef.current;
