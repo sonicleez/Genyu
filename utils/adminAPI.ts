@@ -52,34 +52,102 @@ export interface APIKeyInfo {
 }
 
 /**
+ * Check if current user is admin
+ */
+export async function isUserAdmin(): Promise<boolean> {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return false;
+
+        // Check if user email is in admin list or has admin role
+        const adminEmails = ['admin@example.com', 'dangle@renoschuyler.com']; // Add your admin emails
+        if (adminEmails.includes(user.email || '')) return true;
+
+        // Or check profiles table for role
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        return profile?.role === 'admin';
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Get all users with their stats
  */
 export async function getAdminUsers(): Promise<AdminUser[]> {
     try {
-        // Get users from auth.users via view
-        const { data: users, error } = await supabase
-            .from('user_usage_summary')
-            .select('*')
-            .order('last_activity', { ascending: false, nullsFirst: false });
+        // Get profiles with global stats
+        const { data: profiles, error: profileError } = await supabase
+            .from('profiles')
+            .select('id, email, display_name, created_at, updated_at');
 
-        if (error) throw error;
+        if (profileError) {
+            console.error('[Admin] Profiles error:', profileError);
+        }
 
-        return (users || []).map(u => ({
-            id: u.user_id,
-            email: u.email || 'unknown',
-            created_at: '',
-            last_sign_in_at: null,
-            total_images: u.total_images || 0,
-            scenes_generated: u.scenes || 0,
-            characters_generated: u.characters || 0,
-            gemini_images: u.gemini_images || 0,
-            gommo_images: u.gommo_images || 0,
-            text_tokens: u.text_tokens || 0,
-            has_gemini_key: false,
-            has_gommo_credentials: false,
-            last_activity: u.last_activity,
-            history_count: u.history_count || 0
-        }));
+        // Get all global stats
+        const { data: stats, error: statsError } = await supabase
+            .from('user_global_stats')
+            .select('user_id, stats, updated_at');
+
+        if (statsError) {
+            console.error('[Admin] Stats error:', statsError);
+        }
+
+        // Get image counts per user
+        const { data: imageCounts, error: imageError } = await supabase
+            .from('generated_images_history')
+            .select('user_id')
+            .limit(1000);
+
+        // Count images per user
+        const imageCountMap: Record<string, number> = {};
+        (imageCounts || []).forEach(row => {
+            imageCountMap[row.user_id] = (imageCountMap[row.user_id] || 0) + 1;
+        });
+
+        // Create stats map
+        const statsMap: Record<string, any> = {};
+        (stats || []).forEach(row => {
+            statsMap[row.user_id] = { ...row.stats, updated_at: row.updated_at };
+        });
+
+        // Combine data
+        const users: AdminUser[] = (profiles || []).map(p => {
+            const userStats = statsMap[p.id] || {};
+            return {
+                id: p.id,
+                email: p.email || 'unknown',
+                display_name: p.display_name,
+                created_at: p.created_at,
+                last_sign_in_at: null,
+                total_images: userStats.totalImages || 0,
+                scenes_generated: userStats.scenesGenerated || 0,
+                characters_generated: userStats.charactersGenerated || 0,
+                gemini_images: userStats.geminiImages || 0,
+                gommo_images: userStats.gommoImages || 0,
+                text_tokens: userStats.textTokens || 0,
+                has_gemini_key: false,
+                has_gommo_credentials: false,
+                last_activity: userStats.updated_at || p.updated_at,
+                history_count: imageCountMap[p.id] || 0
+            };
+        });
+
+        // Sort by last activity
+        users.sort((a, b) => {
+            const dateA = a.last_activity ? new Date(a.last_activity).getTime() : 0;
+            const dateB = b.last_activity ? new Date(b.last_activity).getTime() : 0;
+            return dateB - dateA;
+        });
+
+        console.log('[Admin] Loaded', users.length, 'users');
+        return users;
     } catch (e) {
         console.error('[Admin] Failed to fetch users:', e);
         return [];

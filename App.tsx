@@ -48,6 +48,7 @@ import { generateId } from './utils/helpers';
 
 // Import Hooks
 import { fetchUserStatsFromCloud } from './utils/storageUtils';
+import { isUserAdmin } from './utils/adminAPI';
 import { useStateManager } from './hooks/useStateManager';
 import { useImageGeneration } from './hooks/useImageGeneration';
 import { useScriptGeneration } from './hooks/useScriptGeneration';
@@ -92,6 +93,7 @@ const App: React.FC = () => {
     const [zoom, setZoom] = useState(1);
     const [isProfileModalOpen, setProfileModalOpen] = useState(false);
     const [isAdminOpen, setAdminOpen] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     // --- AI Agent Helper ---
     const { addProductionLog, setAgentState } = useProductionLogger(state, updateStateAndRecord);
@@ -336,9 +338,19 @@ const App: React.FC = () => {
     const handleSignOut = async () => {
         await signOut();
         setProfileModalOpen(false);
+        setIsAdmin(false);
         setShowSuccessToast("Đã đăng xuất thành công!");
         setTimeout(() => setShowSuccessToast(null), 3000);
     };
+
+    // Check if user is admin when session changes
+    React.useEffect(() => {
+        if (session?.user) {
+            isUserAdmin().then(setIsAdmin);
+        } else {
+            setIsAdmin(false);
+        }
+    }, [session?.user?.id]);
 
     // Hotkeys
     useHotkeys([
@@ -816,7 +828,7 @@ const App: React.FC = () => {
                         onCloudSave={handleCloudSave}
                         onCloudOpen={handleCloudOpen}
                         onProfileClick={() => setProfileModalOpen(true)}
-                        onAdminClick={() => setAdminOpen(true)}
+                        onAdminClick={isAdmin ? () => setAdminOpen(true) : undefined}
                         profile={profile}
                         subscriptionExpired={subscriptionExpired}
                     />
@@ -1063,7 +1075,7 @@ const App: React.FC = () => {
                     {isAdminOpen && (
                         <AdminDashboard
                             onClose={() => setAdminOpen(false)}
-                            isAdmin={profile?.role === 'admin' || profile?.email?.includes('admin') || true} // TODO: proper admin check
+                            isAdmin={isAdmin}
                         />
                     )}
 
