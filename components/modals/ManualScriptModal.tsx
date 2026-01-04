@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { X, FileText, Upload, Users, Layers, Clock, Play, Film, Palette, AlertTriangle, Check, ChevronDown, ChevronUp, Save, FolderOpen, Trash2 } from 'lucide-react';
+import { X, FileText, Upload, Users, Layers, Clock, Play, Film, Palette, AlertTriangle, Check, ChevronDown, ChevronUp, Save, FolderOpen, Trash2, MapPin } from 'lucide-react';
 import { Character, SceneGroup, Scene, ProjectState, CharacterStyleDefinition } from '../../types';
 import { DirectorPreset, DIRECTOR_PRESETS, DirectorCategory } from '../../constants/directors';
 import { BUILT_IN_CHARACTER_STYLES, getStylesByCategory } from '../../constants/characterStyles';
@@ -26,7 +26,8 @@ interface ManualScriptModalProps {
         styleId: string | undefined,
         directorId: string | undefined,
         sceneCharacterMap: Record<number, string[]>,
-        researchNotes?: { director?: string; dop?: string; story?: string }  // [Updated]
+        researchNotes?: { director?: string; dop?: string; story?: string },
+        detectedLocations?: { id: string; name: string; description: string; keywords: string[]; chapterIds: string[]; conceptPrompt: string; isInterior: boolean; timeOfDay?: string; mood?: string }[]
     ) => void;
     existingCharacters: Character[];
     userApiKey: string | null;
@@ -183,10 +184,13 @@ export const ManualScriptModal: React.FC<ManualScriptModalProps> = ({
         const notes = (directorNotes || dopNotes || storyContext) ? {
             director: directorNotes || undefined,
             dop: dopNotes || undefined,
-            story: storyContext || undefined // [New]
+            story: storyContext || undefined
         } : undefined;
 
-        onImport(scenes, groups, newCharacters, selectedStyleId, selectedDirectorId, sceneCharacterMap, notes);
+        // Pass detected locations for Location Library
+        const locations = analysisResult.locations || [];
+
+        onImport(scenes, groups, newCharacters, selectedStyleId, selectedDirectorId, sceneCharacterMap, notes, locations);
         onClose();
     }, [analysisResult, selectedDirector, selectedStyle, existingCharacters, onImport, onClose, generateSceneMap, selectedStyleId, selectedDirectorId, directorNotes, dopNotes, storyContext]);
 
@@ -771,6 +775,40 @@ John enters the room, wearing a tailored Armani suit..."
                                     })}
                                 </div>
                             </div>
+
+                            {/* Locations Detected (NEW) */}
+                            {analysisResult.locations && analysisResult.locations.length > 0 && (
+                                <div>
+                                    <h3 className="flex items-center gap-2 text-lg font-medium text-white mb-3">
+                                        <MapPin className="w-5 h-5 text-amber-400" /> Locations Detected ({analysisResult.locations.length})
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {analysisResult.locations.map((loc: any, i: number) => (
+                                            <div key={loc.id || i} className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm font-medium text-white flex items-center gap-1.5">
+                                                        {loc.isInterior ? '🏠' : '🌳'} {loc.name}
+                                                    </span>
+                                                    <span className="text-xs text-amber-400/70">
+                                                        {loc.chapterIds?.length || 0} chapters
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-zinc-400 mt-1 line-clamp-2">{loc.description}</div>
+                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                    {loc.keywords?.slice(0, 3).map((kw: string, j: number) => (
+                                                        <span key={j} className="text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded">
+                                                            {kw}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="text-[10px] text-zinc-500 mt-2">
+                                        💡 After import, you can generate concept art for these locations in the Location Library
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Selected Style Preview */}
                             <div className="flex gap-4 p-4 bg-zinc-800/30 rounded-xl">
