@@ -164,12 +164,10 @@ export function QualityRating({
 
             {/* Anchored Popup with Smart Positioning via Portal */}
             {showRejectMenu && createPortal(
-                <>
-                    {/* Transparent backdrop for click-outside */}
-                    <div
-                        className="fixed inset-0 z-[9998]"
-                        onClick={() => setShowRejectMenu(false)}
-                    />
+                <div
+                    className="fixed inset-0 z-[9998]"
+                    onClick={() => setShowRejectMenu(false)}
+                >
                     {/* Popup positioned near the rating buttons */}
                     <div
                         className="fixed z-[9999] bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-[320px] overflow-hidden"
@@ -263,7 +261,7 @@ export function QualityRating({
                             </button>
                         </div>
                     </div>
-                </>,
+                </div>,
                 document.body
             )}
         </div>
