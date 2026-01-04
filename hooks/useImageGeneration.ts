@@ -1011,35 +1011,12 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 }
             }
 
-            // 5f. IDENTITY & OUTFIT REINFORCEMENT - Re-enabled (Sandwich Pattern)
-            // Sending face/body TWICE (start + end) to reinforce identity
-            // Now non-blocking DOP is fixed, we can afford this
-            // PARALLEL loading for speed
-            const sandwichRefs: { char: typeof selectedChars[0], type: 'face' | 'body', img: string }[] = [];
-            for (const char of selectedChars) {
-                if (char.faceImage) sandwichRefs.push({ char, type: 'face', img: char.faceImage });
-                if (char.bodyImage || char.masterImage) sandwichRefs.push({ char, type: 'body', img: char.bodyImage || char.masterImage || '' });
-            }
-
-            const sandwichData = await Promise.all(
-                sandwichRefs.map(ref => safeGetImageData(ref.img).then(data => ({ ...ref, data })))
-            );
-
-            for (const { char, type, data: imgData } of sandwichData) {
-                if (imgData) {
-                    if (type === 'face') {
-                        const refLabel = `FINAL_IDENTITY_ANCHOR: ${char.name.toUpperCase()}`;
-                        parts.push({ text: `[${refLabel}]: !!! FINAL IDENTITY CHECK !!! Match face structure 100%.` });
-                        parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
-                        console.log(`[ImageGen] 🔄 Sandwich: Reinforced FACE for ${char.name}`);
-                    } else {
-                        const refLabel = `FINAL_OUTFIT_ANCHOR: ${char.name.toUpperCase()}`;
-                        parts.push({ text: `[${refLabel}]: !!! FINAL OUTFIT CHECK !!! Character MUST BE CLOTHED. Match outfit exactly.` });
-                        parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
-                        console.log(`[ImageGen] 🔄 Sandwich: Reinforced BODY/OUTFIT for ${char.name}`);
-                    }
-                }
-            }
+            // 5f. IDENTITY REINFORCEMENT - DISABLED (Was Sandwich Pattern)
+            // Sandwich was sending face/body TWICE which doubled reference count
+            // Research: Gemini weighs FIRST references most, duplicates waste tokens
+            // 2 chars: 8 refs → 4 refs (50% reduction)
+            // Speed improvement: ~10-15s per generation
+            console.log(`[ImageGen] ✅ Sandwich disabled - using single-pass references only`);
 
             // (Base Image moved to start)
             if (continuityInstruction) {
