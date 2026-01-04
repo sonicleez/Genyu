@@ -992,8 +992,8 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
             }
 
             // 5f. IDENTITY & OUTFIT REINFORCEMENT - Re-enabled (Sandwich Pattern)
-            // Sending face TWICE (start + end) to reinforce identity
-            // OPTIMIZED: Only reinforce FACE (most important), skip Body for speed
+            // Sending face/body TWICE (start + end) to reinforce identity
+            // Now non-blocking DOP is fixed, we can afford this
             for (const char of selectedChars) {
                 if (char.faceImage) {
                     const imgData = await safeGetImageData(char.faceImage);
@@ -1004,8 +1004,16 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                         console.log(`[ImageGen] 🔄 Sandwich: Reinforced FACE for ${char.name}`);
                     }
                 }
-                // DISABLED for speed: Body/Outfit sandwich
-                // Face is more important for identity, outfit is already locked from first reference
+
+                if (char.bodyImage || char.masterImage) {
+                    const imgData = await safeGetImageData(char.bodyImage || char.masterImage || '');
+                    if (imgData) {
+                        const refLabel = `FINAL_OUTFIT_ANCHOR: ${char.name.toUpperCase()}`;
+                        parts.push({ text: `[${refLabel}]: !!! FINAL OUTFIT CHECK !!! Character MUST BE CLOTHED. Match outfit exactly.` });
+                        parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
+                        console.log(`[ImageGen] 🔄 Sandwich: Reinforced BODY/OUTFIT for ${char.name}`);
+                    }
+                }
             }
 
             // (Base Image moved to start)
@@ -1117,46 +1125,35 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 }
             }
 
-            // Record prompt in DOP Learning System BEFORE generating
+            // Record prompt in DOP Learning System - NON-BLOCKING (fire and forget)
+            // This was causing 10-20s delay because generateEmbedding calls Gemini API
             let dopRecordId: string | null = null;
             if (userId && userApiKey) {
-                try {
-                    if (addProductionLog) {
-                        addProductionLog('dop', `📝 Recording to DOP Learning...`, 'info', 'recording');
+                // Fire and forget - don't await, don't block image generation
+                recordPrompt(
+                    userId,
+                    finalImagePrompt,
+                    promptToSend,
+                    modelToUse,
+                    'scene',
+                    currentState.aspectRatio,
+                    userApiKey
+                ).then(id => {
+                    if (id) {
+                        console.log('[ImageGen] ✅ DOP recorded (async):', id);
+                        // Store for later use in rating
+                        (window as any).__lastDopRecordId = id;
                     }
+                }).catch(e => {
+                    console.error('[ImageGen] ❌ DOP recording failed (async):', e);
+                });
 
-                    dopRecordId = await recordPrompt(
-                        userId,
-                        finalImagePrompt,
-                        promptToSend,
-                        modelToUse,
-                        'scene',
-                        currentState.aspectRatio,
-                        userApiKey
-                    );
-
-                    if (dopRecordId) {
-                        console.log('[ImageGen] ✅ DOP recorded:', dopRecordId);
-                        if (addProductionLog) {
-                            addProductionLog('dop', `✅ Đã lưu vào DOP Learning (ID: ${dopRecordId.slice(0, 8)}...)`, 'info', 'recorded');
-                        }
-                    } else {
-                        console.warn('[ImageGen] ⚠️ DOP recording returned null');
-                        if (addProductionLog) {
-                            addProductionLog('dop', `⚠️ DOP: Không thể ghi (kiểm tra bảng Supabase)`, 'warning', 'record_failed');
-                        }
-                    }
-                } catch (e) {
-                    console.error('[ImageGen] ❌ DOP recording failed:', e);
-                    if (addProductionLog) {
-                        addProductionLog('dop', `❌ DOP error: ${(e as Error).message?.slice(0, 50)}`, 'error', 'record_error');
-                    }
+                console.log('[ImageGen] 🔄 DOP recording started (non-blocking)');
+                if (addProductionLog) {
+                    addProductionLog('dop', `🔄 Recording to DOP Learning (async)...`, 'info', 'recording');
                 }
             } else {
                 console.warn('[ImageGen] ⚠️ DOP skipped - missing userId:', !!userId, 'or apiKey:', !!userApiKey);
-                if (addProductionLog && !userId) {
-                    addProductionLog('dop', `⚠️ DOP: Chưa đăng nhập Supabase (userId missing)`, 'warning', 'no_user');
-                }
             }
 
             // --- LOG REFERENCE SUMMARY TO DOP CHAT (right before generation) ---
