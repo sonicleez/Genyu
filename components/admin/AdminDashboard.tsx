@@ -725,8 +725,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                                                 key={user.id}
                                                 onClick={() => openKeyModal(user)}
                                                 className={`p-4 rounded-lg transition-colors text-left ${hasKey
-                                                        ? 'bg-gray-800 hover:bg-gray-700 border border-gray-700'
-                                                        : 'bg-yellow-900/20 hover:bg-yellow-900/40 border border-yellow-500/30'
+                                                    ? 'bg-gray-800 hover:bg-gray-700 border border-gray-700'
+                                                    : 'bg-yellow-900/20 hover:bg-yellow-900/40 border border-yellow-500/30'
                                                     }`}
                                             >
                                                 <p className="text-white text-sm font-medium truncate">{user.email}</p>
@@ -751,6 +751,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                                 Add API Key for {keyModalUser.email}
                             </h3>
 
+                            <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3 mb-4">
+                                <p className="text-blue-300 text-xs">
+                                    <strong>ℹ️ Note:</strong> Gemini keys work immediately.
+                                    Gommo requires domain + access token (set in User Profile).
+                                </p>
+                            </div>
+
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm text-gray-400 mb-1">Key Type</label>
@@ -759,21 +766,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                                         onChange={e => setNewKeyType(e.target.value)}
                                         className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white"
                                     >
-                                        <option value="gemini">Gemini API Key</option>
-                                        <option value="gommo">Gommo API Key</option>
-                                        <option value="openai">OpenAI API Key</option>
-                                        <option value="anthropic">Anthropic API Key</option>
+                                        <option value="gemini">🔵 Gemini API Key (Most Used)</option>
+                                        <option value="gommo">🟡 Gommo Token (Requires Domain)</option>
+                                        <option value="openai">🟢 OpenAI API Key</option>
+                                        <option value="anthropic">🟣 Anthropic API Key</option>
                                     </select>
+                                    {newKeyType === 'gommo' && (
+                                        <p className="text-yellow-400 text-xs mt-1">
+                                            ⚠️ For Gommo, you need both Domain AND Access Token.
+                                            Use User Profile modal for full Gommo setup.
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-1">API Key Value</label>
+                                    <label className="block text-sm text-gray-400 mb-1">
+                                        {newKeyType === 'gemini' ? 'Gemini API Key (AIza...)' :
+                                            newKeyType === 'gommo' ? 'Gommo Access Token' :
+                                                newKeyType === 'openai' ? 'OpenAI API Key (sk-...)' :
+                                                    'Anthropic API Key'}
+                                    </label>
                                     <input
                                         type="password"
                                         value={newKeyValue}
                                         onChange={e => setNewKeyValue(e.target.value)}
-                                        placeholder="Paste API key here..."
-                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white"
+                                        placeholder={
+                                            newKeyType === 'gemini' ? 'AIza...' :
+                                                newKeyType === 'gommo' ? 'Paste access token...' :
+                                                    newKeyType === 'openai' ? 'sk-...' :
+                                                        'sk-ant-...'
+                                        }
+                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-sm"
                                     />
                                 </div>
 
