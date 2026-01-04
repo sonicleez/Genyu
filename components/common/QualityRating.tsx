@@ -158,72 +158,80 @@ export function QualityRating({
                 </button>
             </div>
 
-            {/* Anchored Popup - positioned relative to this component */}
+            {/* Fixed Center Modal - prevents clipping */}
             {showRejectMenu && (
-                <div
-                    className="absolute z-[200] bottom-full left-1/2 -translate-x-1/2 mb-2 
-                        bg-gray-900/98 backdrop-blur-xl border border-gray-700/80 rounded-xl shadow-2xl
-                        w-[280px] overflow-hidden"
-                    onClick={e => e.stopPropagation()}
-                >
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700/50 bg-red-900/20">
-                        <span className="text-sm font-bold text-white flex items-center gap-1.5">
-                            <AlertTriangle size={14} className="text-red-400" />
-                            Chọn lý do lỗi
-                        </span>
-                        <button
-                            onClick={() => setShowRejectMenu(false)}
-                            className="p-1 hover:bg-gray-700/50 rounded transition-colors"
-                        >
-                            <X size={14} className="text-gray-400" />
-                        </button>
-                    </div>
+                <>
+                    {/* Backdrop */}
+                    <div
+                        className="fixed inset-0 z-[199] bg-black/40 backdrop-blur-sm"
+                        onClick={() => setShowRejectMenu(false)}
+                    />
+                    {/* Modal */}
+                    <div
+                        className="fixed z-[200] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                            bg-gray-900/98 backdrop-blur-xl border border-gray-700/80 rounded-xl shadow-2xl
+                            w-[320px] overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700/50 bg-gradient-to-r from-red-900/30 to-orange-900/20">
+                            <span className="text-sm font-bold text-white flex items-center gap-2">
+                                <AlertTriangle size={16} className="text-red-400" />
+                                Chọn lý do lỗi
+                            </span>
+                            <button
+                                onClick={() => setShowRejectMenu(false)}
+                                className="p-1.5 hover:bg-gray-700/50 rounded transition-colors"
+                            >
+                                <X size={16} className="text-gray-400" />
+                            </button>
+                        </div>
 
-                    {/* Options Grid - Compact */}
-                    <div className="p-2 grid grid-cols-2 gap-1.5 max-h-[200px] overflow-y-auto">
-                        {REJECTION_OPTIONS.map(opt => {
-                            const isSelected = selectedReasons.includes(opt.value);
-                            return (
-                                <button
-                                    key={opt.value}
-                                    onClick={() => toggleReason(opt.value)}
-                                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-left text-xs transition-all ${isSelected
-                                            ? 'bg-red-500/25 border border-red-500/50 text-red-300'
-                                            : 'bg-gray-800/60 border border-transparent text-gray-300 hover:bg-gray-700/60'
-                                        }`}
-                                >
-                                    <span>{opt.emoji}</span>
-                                    <span className="truncate flex-1">{opt.label}</span>
-                                    {isSelected && <CheckCircle2 size={12} className="text-red-400 flex-shrink-0" />}
-                                </button>
-                            );
-                        })}
-                    </div>
+                        {/* Options Grid */}
+                        <div className="p-3 grid grid-cols-2 gap-2 max-h-[280px] overflow-y-auto">
+                            {REJECTION_OPTIONS.map(opt => {
+                                const isSelected = selectedReasons.includes(opt.value);
+                                return (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => toggleReason(opt.value)}
+                                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-left text-xs transition-all ${isSelected
+                                            ? 'bg-red-500/25 border border-red-500/50 text-red-300 shadow-lg shadow-red-500/20'
+                                            : 'bg-gray-800/60 border border-gray-700/50 text-gray-300 hover:bg-gray-700/60 hover:border-gray-600'
+                                            }`}
+                                    >
+                                        <span className="text-sm">{opt.emoji}</span>
+                                        <span className="truncate flex-1">{opt.label}</span>
+                                        {isSelected && <CheckCircle2 size={14} className="text-red-400 flex-shrink-0" />}
+                                    </button>
+                                );
+                            })}
+                        </div>
 
-                    {/* Footer */}
-                    <div className="px-2 py-2 border-t border-gray-700/50 flex gap-2">
-                        <button
-                            onClick={handleReject}
-                            disabled={selectedReasons.length === 0 || isRating}
-                            className={`flex-1 px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${selectedReasons.length > 0
-                                    ? 'bg-red-600 hover:bg-red-500 text-white'
+                        {/* Footer */}
+                        <div className="px-3 py-3 border-t border-gray-700/50 flex gap-2 bg-gray-800/30">
+                            <button
+                                onClick={handleReject}
+                                disabled={selectedReasons.length === 0 || isRating}
+                                className={`flex-1 px-4 py-2 rounded-lg font-bold text-sm transition-all ${selectedReasons.length > 0
+                                    ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30'
                                     : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                }`}
-                        >
-                            {isRating ? '⏳' : `Báo lỗi (${selectedReasons.length})`}
-                        </button>
-                        <button
-                            onClick={() => {
-                                setSelectedReasons([]);
-                                setShowRejectMenu(false);
-                            }}
-                            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xs"
-                        >
-                            Hủy
-                        </button>
+                                    }`}
+                            >
+                                {isRating ? '⏳ Đang gửi...' : `Báo lỗi (${selectedReasons.length})`}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setSelectedReasons([]);
+                                    setShowRejectMenu(false);
+                                }}
+                                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition-colors"
+                            >
+                                Hủy
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </>
             )}
         </div>
     );
