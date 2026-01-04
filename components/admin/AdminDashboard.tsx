@@ -604,7 +604,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isAdmin
                                                 </div>
                                             ))
                                     ) : (
-                                        <p className="text-gray-500 text-sm">Chưa có rejection data</p>
+                                        <div className="space-y-3">
+                                            {/* Calculate unrated count */}
+                                            {(() => {
+                                                const totalGen = dopStats.reduce((sum, m: any) => sum + (m.total_generations || 0), 0);
+                                                const totalApproved = dopStats.reduce((sum, m: any) => sum + (m.approved_count || 0), 0);
+                                                const unrated = totalGen - totalApproved;
+                                                return (
+                                                    <>
+                                                        <div className="bg-amber-900/20 border border-amber-700/30 rounded-lg p-3">
+                                                            <p className="text-amber-400 text-sm font-medium">⚠️ {unrated} ảnh chưa được đánh giá</p>
+                                                            <p className="text-amber-400/70 text-xs mt-1">
+                                                                Nhấn 👎 trên ảnh và chọn lý do để DOP học từ lỗi.
+                                                            </p>
+                                                        </div>
+                                                        <p className="text-gray-500 text-xs">
+                                                            Tip: Khi đánh giá ảnh với lý do cụ thể, DOP sẽ tránh tạo ảnh tương tự trong tương lai.
+                                                        </p>
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
                                     )}
                                 </div>
                             </div>
