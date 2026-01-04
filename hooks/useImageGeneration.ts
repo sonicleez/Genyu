@@ -1561,9 +1561,12 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                             decision: lastValidation.decision
                         });
 
-                        // Filter for critical errors only (character/prop issues warrant regen)
+                        // Filter for critical errors (warrant regen)
+                        // character: face/identity wrong
+                        // prop: items missing/wrong
+                        // spatial: background/environment wrong
                         const criticalErrors = lastValidation.errors.filter(e =>
-                            e.type === 'character' || e.type === 'prop'
+                            e.type === 'character' || e.type === 'prop' || e.type === 'spatial'
                         );
 
                         console.log('[DOP] Critical errors:', criticalErrors.length, criticalErrors);
@@ -1622,29 +1625,41 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
 
                                 console.log('[DOP Agent] Decision:', decision);
 
-                                if (decision.action === 'skip') {
-                                    console.log('[DOP Agent] SKIP - errors are unfixable, saving credits');
+                                // ALWAYS TRY ONCE before giving up
+                                // Decision Agent now only affects enhancement prompt, not skip decision
+                                if (decision.action === 'skip' && retryCount === 0) {
+                                    console.log('[DOP Agent] Would skip, but forcing 1 retry first');
+                                    // Still try once with enhanced correction
+                                    if (decision.enhancedPrompt) {
+                                        enhancedCorrection = decision.enhancedPrompt;
+                                    }
+                                    // Mark that this is a "last chance" retry
+                                    MAX_DOP_RETRIES = 1;
+                                } else if (decision.action === 'skip' && retryCount >= 1) {
+                                    // Already retried once, now truly skip
+                                    console.log('[DOP Agent] SKIP after 1 retry - errors are unfixable');
                                     shouldRetry = false;
 
                                     // FIX: Clear checking status and show clear unfixable message
                                     const unfixableMsg = decision.reason.includes('face') || decision.reason.includes('identity')
-                                        ? `🚫 UNFIXABLE: Nhân vật khác (AI không thể sửa - cần chọn reference khác hoặc regenerate từ đầu)`
-                                        : `⚠️ DOP Skip: ${decision.reason}`;
+                                        ? `🚫 UNFIXABLE: Nhân vật khác (AI không thể sửa - cần chọn reference khác)`
+                                        : `⚠️ DOP: Đã retry 1 lần nhưng vẫn lỗi - ${decision.reason}`;
 
                                     updateStateAndRecord(s => ({
                                         ...s,
                                         scenes: s.scenes.map(sc => sc.id === scene.id ? {
                                             ...sc,
-                                            error: unfixableMsg
+                                            error: unfixableMsg,
+                                            dopFailed: true
                                         } : sc)
                                     }));
 
-                                    setAgentState('dop', 'error', 'Lỗi không thể sửa tự động - cần review thủ công');
+                                    setAgentState('dop', 'error', 'Lỗi không thể sửa sau 1 retry');
                                     if (addProductionLog) {
                                         addProductionLog('dop', unfixableMsg, 'warning');
                                     }
                                 } else if (decision.action === 'try_once') {
-                                    MAX_DOP_RETRIES = 1; // Reduce retries for uncertain cases
+                                    MAX_DOP_RETRIES = 1;
                                     if (decision.enhancedPrompt) {
                                         enhancedCorrection = decision.enhancedPrompt;
                                     }
