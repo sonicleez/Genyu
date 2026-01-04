@@ -955,12 +955,17 @@ DO NOT invent new environments or change the location. This is NOT a different p
 
             // 5e. CONTINUITY ANCHOR FROM PREVIOUS SHOT (Stronger Logic)
             // Use if isContinuityMode is ON and we are in the same group (or no group but sequential)
+            // SKIP dopFailed scenes - use last GOOD scene as reference
             if (isContinuityMode && currentSceneIndex > 0 && !sceneToUpdate.referenceImage) {
-                const prevSceneWithImage = currentState.scenes.slice(0, currentSceneIndex).reverse().find(s => s.generatedImage);
+                // Find previous scene that has image AND is not marked as dopFailed
+                const prevSceneWithImage = currentState.scenes
+                    .slice(0, currentSceneIndex)
+                    .reverse()
+                    .find(s => s.generatedImage && !(s as any).dopFailed);
 
                 // Only use as anchor if it belongs to the same Scene Group (strong continuity) or is the immediate predecessor
                 const isSameGroup = prevSceneWithImage && prevSceneWithImage.groupId === sceneToUpdate.groupId;
-                const isImmediate = prevSceneWithImage && (parseInt(sceneToUpdate.sceneNumber) - parseInt(prevSceneWithImage.sceneNumber) <= 1);
+                const isImmediate = prevSceneWithImage && (parseInt(sceneToUpdate.sceneNumber) - parseInt(prevSceneWithImage.sceneNumber) <= 2); // Allow gap of 1 (failed scene)
 
                 if (prevSceneWithImage?.generatedImage && (isSameGroup || isImmediate)) {
                     const imgData = await safeGetImageData(prevSceneWithImage.generatedImage);
@@ -974,8 +979,13 @@ DO NOT invent new environments or change the location. This is NOT a different p
 
                         const anchorLabel = isZoomingIn ? "ZOOM_IN_ANCHOR" : "CONTINUITY_ANCHOR";
 
+                        // Note if we skipped a failed scene
+                        const skippedFailedNote = currentSceneIndex - currentState.scenes.indexOf(prevSceneWithImage) > 1
+                            ? `(Skipped failed scene - using Scene ${prevSceneWithImage.sceneNumber} as reference instead)`
+                            : '';
+
                         parts.push({
-                            text: `[${anchorLabel}]: CONTINUITY REFERENCE (SELECTIVE). Use previous frame for consistency. ${charReturnWarning}
+                            text: `[${anchorLabel}]: CONTINUITY REFERENCE (SELECTIVE). ${skippedFailedNote} Use previous frame for consistency. ${charReturnWarning}
 INHERIT THESE:
 1. PHYSICAL LIGHTING: Match actual light source direction and shadow placement
 2. ENVIRONMENT: Fixed positions of furniture, architecture, and landmarks
@@ -991,7 +1001,14 @@ INHERIT THESE:
 The NEW scene has its OWN camera style as specified in the current prompt. DO NOT apply previous scene's camera treatment.` });
 
                         parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
+
+                        if (skippedFailedNote) {
+                            console.log(`[ImageGen] ⚠️ Skipped failed scene, using Scene ${prevSceneWithImage.sceneNumber} as continuity ref`);
+                        }
                     }
+                } else if (!prevSceneWithImage) {
+                    // No good previous scene found - this is like a new group
+                    console.log('[ImageGen] 📍 No valid previous scene - generating as new group (character/environment refs only)');
                 }
             }
 
@@ -1729,28 +1746,26 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                         }
 
                         if (retryCount >= MAX_DOP_RETRIES && !lastValidation.isValid) {
-                            console.warn('[DOP] Max retries reached. Marking scene for manual review.');
+                            console.warn('[DOP] Max retries reached. Marking scene as FAILED but CONTINUING batch.');
                             if (addProductionLog) {
-                                addProductionLog('dop', `CẢNH BÁO: Cảnh ${scene.sceneNumber} gặp lỗi raccord nghiêm trọng (${lastValidation.errors[0]?.description}). Đã cố gắng sửa ${MAX_DOP_RETRIES} lần nhưng không thành công.`, 'warning');
-                            }
-                            // Proactive: Inform Director to update DNA for future scenes
-                            if (lastValidation.errors.some(e => e.type === 'character')) {
-                                addProductionLog('dop', 'Chỉ thị cho Director: Identity raccord bị trôi. Hãy rà soát lại Visual DNA cho các cảnh sau.', 'directive');
+                                addProductionLog('dop', `⚠️ Cảnh ${scene.sceneNumber} lỗi raccord - đã bỏ qua. Tiếp tục cảnh tiếp theo.`, 'warning');
                             }
 
+                            // Mark scene as failed with clear error message
                             updateStateAndRecord(s => ({
-
                                 ...s,
                                 scenes: s.scenes.map(sc => sc.id === scene.id ? {
                                     ...sc,
-                                    error: `⚠️ DOP: Requires manual review (${lastValidation.errors.map(e => e.description).join('; ')})`
+                                    // Keep the generated image but mark as needs review
+                                    error: `⚠️ DOP FAILED: ${lastValidation.errors.map(e => e.description).join('; ')} - Cần review thủ công`,
+                                    dopFailed: true // Flag for next scene to skip this as reference
                                 } : sc)
                             }));
 
-                            // FAIL FAST RETURN
-                            if (lastValidation.decision === 'skip') {
-                                return 'critical_error';
-                            }
+                            setAgentState('dop', 'error', `Cảnh ${scene.sceneNumber} lỗi - tiếp tục cảnh sau`);
+
+                            // DO NOT RETURN - Continue to next scene
+                            // Next scene will check dopFailed flag and use last GOOD scene as reference
                         } else if (lastValidation.isValid) {
                             console.log('[DOP] Raccord validation PASSED');
                             if (addProductionLog) {
@@ -1761,9 +1776,12 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                                 ...s,
                                 scenes: s.scenes.map(sc => sc.id === scene.id ? {
                                     ...sc,
-                                    error: null // Clear the status indicator
+                                    error: null, // Clear the status indicator
+                                    dopFailed: false // This is a GOOD reference for future scenes
                                 } : sc)
                             }));
+
+                            setAgentState('dop', 'success', `Cảnh ${scene.sceneNumber} khớp raccord hoàn hảo!`);
                         }
 
                     }
