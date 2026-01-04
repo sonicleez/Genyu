@@ -1454,8 +1454,10 @@ IGNORE any prior text descriptions if they conflict with this visual DNA.` });
                 const updatedScene = updatedState.scenes.find(s => s.id === scene.id);
                 const currentImage = updatedScene?.generatedImage;
 
-                // DOP Vision Validation (if enabled and not first scene)
-                if (isDOPEnabled && validateRaccordWithVision && currentImage && userApiKey) {
+                // DOP Vision Validation - DISABLED for speed (like original code)
+                // User can still rate images manually via 👍/👎 buttons
+                // To re-enable: change 'false &&' back to 'isDOPEnabled &&'
+                if (false && isDOPEnabled && validateRaccordWithVision && currentImage && userApiKey) {
                     const currentSceneIndex = updatedState.scenes.findIndex(s => s.id === scene.id);
                     const prevScene = currentSceneIndex > 0 ? updatedState.scenes[currentSceneIndex - 1] : null;
 
