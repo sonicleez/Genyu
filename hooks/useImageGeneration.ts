@@ -173,18 +173,33 @@ export function useImageGeneration(
             }
 
             if (subjects.length > 0) {
-                console.log(`[ImageGen] 🎭 Converted ${subjects.length} reference image(s) to Gommo subjects (Face ID / Continuity)`);
+                console.log(`[ImageGen] 🎭 Converted ${subjects.length} reference image(s) to Gommo subjects`);
             }
 
             try {
                 const client = new GommoAI(gommoCredentials.domain, gommoCredentials.accessToken);
                 const gommoRatio = GommoAI.convertRatio(aspectRatio);
 
+                // GOMMO IDENTITY INJECTION: Prepend instruction to match subject images
+                // Gommo models need explicit instruction to use subjects for face/body
+                let gommoPrompt = prompt;
+                if (subjects.length > 0) {
+                    const identityPrefix = `[IDENTITY LOCK] Use the provided reference image(s) as the ONLY source for character face and body. Match the face structure, features, and clothing EXACTLY from the reference. Do NOT generate a different face. `;
+                    gommoPrompt = identityPrefix + prompt;
+                    console.log('[ImageGen] 🔒 Added IDENTITY LOCK prefix for Gommo');
+                }
+
+                // Limit subjects to first 3 (Face, Body, Continuity) - too many confuses API
+                const limitedSubjects = subjects.slice(0, 3);
+                if (subjects.length > 3) {
+                    console.log(`[ImageGen] ⚠️ Limiting subjects from ${subjects.length} to 3 for Gommo`);
+                }
+
                 // Generate image via Gommo (async with polling)
-                const cdnUrl = await client.generateImage(prompt, {
+                const cdnUrl = await client.generateImage(gommoPrompt, {
                     ratio: gommoRatio,
                     model: model,
-                    subjects: subjects.length > 0 ? subjects : undefined,
+                    subjects: limitedSubjects.length > 0 ? limitedSubjects : undefined,
                     onProgress: (status, attempt) => {
                         console.log(`[Gommo] Polling ${attempt}/60: ${status}`);
                     }
