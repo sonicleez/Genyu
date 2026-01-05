@@ -73,7 +73,7 @@ import { supabase } from './utils/supabaseClient';
 
 
 const App: React.FC = () => {
-    const { session, profile, isPro, subscriptionExpired, loading, signOut } = useAuth();
+    const { session, profile, isPro, isAdmin, subscriptionExpired, loading, signOut } = useAuth();
     // Core State & History
     // --- Core State & History ---
     const {
@@ -96,7 +96,6 @@ const App: React.FC = () => {
     const [zoom, setZoom] = useState(1);
     const [isProfileModalOpen, setProfileModalOpen] = useState(false);
     const [isAdminOpen, setAdminOpen] = useState(false);
-    const [isAdmin, setIsAdmin] = useState(false);
 
     // --- AI Agent Helper ---
     const { addProductionLog, setAgentState } = useProductionLogger(state, updateStateAndRecord);
@@ -353,19 +352,9 @@ const App: React.FC = () => {
     const handleSignOut = async () => {
         await signOut();
         setProfileModalOpen(false);
-        setIsAdmin(false);
         setShowSuccessToast("Đã đăng xuất thành công!");
         setTimeout(() => setShowSuccessToast(null), 3000);
     };
-
-    // Check if user is admin when session changes
-    React.useEffect(() => {
-        if (session?.user) {
-            isUserAdmin().then(setIsAdmin);
-        } else {
-            setIsAdmin(false);
-        }
-    }, [session?.user?.id]);
 
     // Hotkeys
     useHotkeys([
@@ -799,7 +788,7 @@ const App: React.FC = () => {
                     <div className="w-12 h-12 border-4 border-brand-orange border-t-transparent rounded-full animate-spin mb-4"></div>
                     <p className="text-brand-cream/60 animate-pulse text-xs font-bold tracking-widest uppercase">Khởi tạo ứng dụng...</p>
                 </div>
-            ) : session && !isPro ? (
+            ) : session && !isPro && !isAdmin ? (
                 <ActivationScreen email={session.user.email} onSignOut={handleSignOut} />
             ) : (
                 <>

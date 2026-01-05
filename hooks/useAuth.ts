@@ -48,5 +48,8 @@ export const useAuth = () => {
         profile?.subscription_expires_at &&
         new Date(profile.subscription_expires_at) <= new Date();
 
-    return { session, profile, isPro, subscriptionExpired, loading, signOut };
+    const isAdmin = (profile?.role === 'admin') ||
+        (['admin@example.com', 'dangle@renoschuyler.com', 'xvirion@gmail.com'].includes(session?.user?.email || ''));
+
+    return { session, profile, isPro, isAdmin, subscriptionExpired, loading, signOut };
 };
