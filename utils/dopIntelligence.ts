@@ -112,6 +112,57 @@ export async function analyzeAndEnhance(
 }
 
 /**
+ * NEW: Analyze scene continuity to ensure logical flow from previous shot
+ */
+export async function analyzeSceneContinuity(
+    apiKey: string,
+    currentScene: { description: string; action: string; shotType?: string },
+    previousScene: { description: string; action: string; shotType?: string; imageUrl?: string } | null
+): Promise<string> {
+    if (!previousScene || !apiKey) return '';
+
+    try {
+        console.log('[DOP Intelligence] 🎬 Analyzing continuity...');
+
+        const prompt = `
+        Acting as a Director of Photography (DOP), analyze the transition between two shots to ensure spatial continuity and logical camera movement.
+
+        [PREVIOUS SHOT]
+        Description: ${previousScene.description}
+        Action: ${previousScene.action}
+        Shot Type: ${previousScene.shotType || 'Unknown'}
+        
+        [CURRENT SHOT]
+        Description: ${currentScene.description}
+        Action: ${currentScene.action}
+        Shot Type: ${currentScene.shotType || 'Unknown'}
+
+        TASK:
+        Generate a concise "Visual Bridge" instruction (max 15 words) that explains how the camera and character moved from Shot A to Shot B.
+        - Focus on: Camera angle change, spatial rotation, and character pose transition.
+        - If the previous shot was a Wide Shot and the current is Close Up, specify "Cut to Close Up matching eye-line".
+        - If character was standing and is now kneeling, specify "Follow character movement down".
+        
+        OUTPUT FORMAT: Just the instruction text. No quotes.
+        `;
+
+        const ai = new GoogleGenAI({ apiKey });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ parts: [{ text: prompt }] }]
+        });
+
+        const transition = (response.text as unknown as string)?.trim();
+        console.log(`[DOP Intelligence] 🔄 Transition: "${transition}"`);
+        return transition || '';
+
+    } catch (error) {
+        console.warn('[DOP Intelligence] Continuity analysis failed:', error);
+        return '';
+    }
+}
+
+/**
  * Enhance prompt using learned patterns
  */
 async function enhancePromptWithLearnings(

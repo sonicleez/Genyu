@@ -14,6 +14,7 @@ import { GommoAI, urlToBase64 } from '../utils/gommoAI';
 import { IMAGE_MODELS } from '../utils/appConstants';
 import { normalizePrompt, normalizePromptAsync, formatNormalizationLog, needsNormalization, containsVietnamese } from '../utils/promptNormalizer';
 import { recordPrompt, approvePrompt, getSuggestedKeywords } from '../utils/dopLearning';
+import { analyzeSceneContinuity } from '../utils/dopIntelligence';
 import { incrementGlobalStats, recordGeneratedImage } from '../utils/userGlobalStats';
 import { validateRaccord, formatValidationResult, RaccordValidationResult } from '../utils/dopRaccordValidator';
 import { isGridModel, splitImageGrid } from '../utils/imageUtils';
@@ -576,6 +577,33 @@ This applies to EVERY human figure in the scene without ANY exception. If a hand
                 }
             }
 
+            // --- 2.5 CONTINUITY ANALYSIS (Action Mapping) ---
+            let continuityLinkInstruction = '';
+            if (currentSceneIndex > 0 && userApiKey && isContinuityMode) {
+                const prevScene = currentState.scenes[currentSceneIndex - 1];
+                // Only analyze if within same group or logically connected
+                if (prevScene.groupId === sceneToUpdate.groupId) {
+                    try {
+                        const transition = await analyzeSceneContinuity(
+                            userApiKey,
+                            { description: sceneToUpdate.contextDescription, action: coreAction, shotType: anglePrompt },
+                            {
+                                description: prevScene.contextDescription,
+                                action: prevScene.actionDescription || prevScene.contextDescription,
+                                shotType: prevScene.cameraAngleOverride,
+                                imageUrl: prevScene.generatedImage || undefined
+                            }
+                        );
+                        if (transition) {
+                            continuityLinkInstruction = `[VISUAL BRIDGE - PREVIOUS SHOT CONNECTION]: ${transition}. (Maintain flow from previous shot).`;
+                            console.log('[ImageGen] 🔗 Continuity instruction added:', transition);
+                        }
+                    } catch (err) {
+                        console.warn('[ImageGen] Continuity analysis failed, skipping.');
+                    }
+                }
+            }
+
             // --- DIRECTOR DNA INJECTION ---
             let directorDNAPrompt = '';
             if (currentState.activeDirectorId) {
@@ -644,7 +672,7 @@ This applies to EVERY human figure in the scene without ANY exception. If a hand
                 // GEMINI PROMPT: Original order, verbose anti-collage, full context
                 // Gemini handles long prompts well with full instruction set
                 // ═══════════════════════════════════════════════════════════════
-                finalImagePrompt = `${antiCollagePromptFull} ${globalStoryPrompt} ${directorDNAPrompt} ${dopResearchPrompt} ${authoritativeStyle} ${scaleCmd} ${scaleLockInstruction} ${noDriftGuard} ${coreActionPrompt} ${groupEnvAnchor} ${timeWeatherLock} ${charPrompt} FULL SCENE VISUALS: ${cleanedContext}. STYLE DETAILS: ${metaTokens}. TECHNICAL: (STRICT CAMERA: ${cinematographyPrompt ? cinematographyPrompt : 'High Quality'}).`.trim();
+                finalImagePrompt = `${antiCollagePromptFull} ${globalStoryPrompt} ${directorDNAPrompt} ${dopResearchPrompt} ${authoritativeStyle} ${scaleCmd} ${scaleLockInstruction} ${noDriftGuard} ${continuityLinkInstruction} ${coreActionPrompt} ${groupEnvAnchor} ${timeWeatherLock} ${charPrompt} FULL SCENE VISUALS: ${cleanedContext}. STYLE DETAILS: ${metaTokens}. TECHNICAL: (STRICT CAMERA: ${cinematographyPrompt ? cinematographyPrompt : 'High Quality'}).`.trim();
                 console.log('[ImageGen] 🔵 GEMINI prompt (full verbose)');
             }
 
