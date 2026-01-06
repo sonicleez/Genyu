@@ -469,7 +469,7 @@ OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
                 // FACELESS ENFORCEMENT
                 const isFacelessMode = currentState.globalCharacterStyleId?.includes('faceless');
                 const facelessConstraint = (isFacelessMode && !hasAnimal)
-                    ? ' !!! STRICT FACELESS MODE: NO FACES, NO EYES, NO MOUTH. Heads must be turned away, in shadow, or obscured. !!! '
+                    ? ' !!! STRICT FACELESS MODE: NO FACES, NO EYES, NO MOUTH. Heads must be smooth/featureless. EMOTION MUST BE SHOWN VIA EXAGGERATED BODY LANGUAGE, POSTURE AND HAND GESTURES ONLY. !!! '
                     : '';
 
                 // MANNEQUIN MATERIAL ENFORCEMENT (Critical for style consistency)
@@ -665,15 +665,41 @@ This applies to EVERY human figure in the scene without ANY exception. If a hand
                 // GOMMO PROMPT: Style-first, concise, prioritize early tokens
                 // Many Gommo models truncate or prioritize beginning of prompt
                 // ═══════════════════════════════════════════════════════════════
-                finalImagePrompt = `${authoritativeStyle} ${antiCollagePromptShort} SCENE: ${cleanedContext}. ${coreActionPrompt} ${charPrompt} ${groupEnvAnchor} ${timeWeatherLock} ${scaleCmd} ${globalStoryPrompt} ${directorDNAPrompt} STYLE: ${metaTokens}. CAMERA: ${cinematographyPrompt || 'Auto'}.`.trim();
-                console.log('[ImageGen] 🟡 GOMMO prompt (style-first, concise)');
+                // GOMMO PROMPT: Subject-first, prioritize Visual Content
+                // Re-ordered to put Action and Characters before Style to fix logic/consistency
+                // ═══════════════════════════════════════════════════════════════
+                finalImagePrompt = `${antiCollagePromptShort} SUBJECT & ACTION: ${coreActionPrompt} ${cleanedContext}. CHARACTERS: ${charPrompt}. ENVIRONMENT: ${groupEnvAnchor} ${timeWeatherLock}. STYLE: ${authoritativeStyle} ${directorDNAPrompt} ${metaTokens}. CAMERA: ${cinematographyPrompt || 'Auto'}.`.trim();
+                console.log('[ImageGen] 🟡 GOMMO prompt (subject-first optimized)');
             } else {
                 // ═══════════════════════════════════════════════════════════════
-                // GEMINI PROMPT: Original order, verbose anti-collage, full context
-                // Gemini handles long prompts well with full instruction set
+                // GEMINI PROMPT: Context-First Architecture
+                // Structure: [Rules] -> [Visual Core (Who/What/Action)] -> [Where] -> [How (Style/Cam)]
+                // Fixes "Logic not correct" by prioritizing Action/Context over Style headers.
                 // ═══════════════════════════════════════════════════════════════
-                finalImagePrompt = `${antiCollagePromptFull} ${globalStoryPrompt} ${directorDNAPrompt} ${dopResearchPrompt} ${authoritativeStyle} ${scaleCmd} ${scaleLockInstruction} ${noDriftGuard} ${continuityLinkInstruction} ${coreActionPrompt} ${groupEnvAnchor} ${timeWeatherLock} ${charPrompt} FULL SCENE VISUALS: ${cleanedContext}. STYLE DETAILS: ${metaTokens}. TECHNICAL: (STRICT CAMERA: ${cinematographyPrompt ? cinematographyPrompt : 'High Quality'}).`.trim();
-                console.log('[ImageGen] 🔵 GEMINI prompt (full verbose)');
+                finalImagePrompt = `
+${antiCollagePromptFull}
+
+[VISUAL CORE - SUBJECT & ACTION]:
+${continuityLinkInstruction}
+${coreActionPrompt}
+FULL SCENE ACTION: ${cleanedContext}
+
+[CHARACTERS & APPEARANCE]:
+${charPrompt}
+
+[ENVIRONMENT & ATMOSPHERE]:
+${groupEnvAnchor}
+${timeWeatherLock}
+${globalStoryPrompt}
+
+[CINEMATOGRAPHY & STYLE]:
+${directorDNAPrompt}
+${dopResearchPrompt}
+${authoritativeStyle}
+${scaleCmd} ${scaleLockInstruction} ${noDriftGuard}
+STYLE DETAILS: ${metaTokens}
+TECHNICAL CAMERA: ${cinematographyPrompt ? cinematographyPrompt : 'High Quality'}`.trim().replace(/\n+/g, ' '); // Flatten to single line for API stability
+                console.log('[ImageGen] 🔵 GEMINI prompt (Context-First Re-ordered)');
             }
 
             console.log('[ImageGen] 📝 Prompt Preview (first 300 chars):', finalImagePrompt.substring(0, 300));

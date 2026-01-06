@@ -152,7 +152,7 @@ export async function analyzeSceneContinuity(
             contents: [{ parts: [{ text: prompt }] }]
         });
 
-        const transition = (response.text as unknown as string)?.trim();
+        const transition = (response.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
         console.log(`[DOP Intelligence] 🔄 Transition: "${transition}"`);
         return transition || '';
 

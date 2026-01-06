@@ -235,7 +235,12 @@ export const callGeminiText = async (
             };
         }
 
-        return response.text;
+        const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) {
+            console.warn('[Gemini Text] ⚠️ Empty response text (check candidate blocked?)');
+            return '';
+        }
+        return text;
     } catch (err: any) {
         console.error('[Gemini Text] ❌ Error:', err.message);
         throw err;
@@ -266,7 +271,8 @@ export const callGeminiVisionReasoning = async (
             contents: [{ parts: parts }],
         });
 
-        return response.text || '';
+        const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+        return text || '';
     } catch (err: any) {
         console.error('[Gemini Vision] ❌ Reasoning Error:', err.message);
         throw err;
@@ -299,7 +305,7 @@ export const callCharacterImageAPI = async (
     // GOMMO PATH
     // ═══════════════════════════════════════════════════════════════
     if (provider === 'gommo') {
-        // STRICT CHECK: Only use Gommo if provider is explicitly Gommo AND credentials exist
+        // STRICT CHECK: Only use Gommo if provider is explicitly Gommo
         if (gommoCredentials?.domain && gommoCredentials?.accessToken) {
             console.log('[CharacterGen] 🟡 Using GOMMO provider');
             try {
@@ -338,24 +344,21 @@ export const callCharacterImageAPI = async (
                 console.error('[CharacterGen] ❌ Gommo error:', error.message);
                 throw error;
             }
-        }
-
-        // ═══════════════════════════════════════════════════════════════
-        // ERROR: Gommo model selected but credentials missing
-        // ═══════════════════════════════════════════════════════════════
-        if (provider === 'gommo') {
+        } else {
+            // Gommo selected but no creds
             console.error('[CharacterGen] ❌ Gommo model selected but credentials missing!');
             throw new Error('Gommo credentials chưa được cấu hình. Vào Profile → Gommo AI để nhập Domain và Access Token.');
         }
+    }
 
-        // ═══════════════════════════════════════════════════════════════
-        // GEMINI PATH (only for Gemini provider models)
-        // ═══════════════════════════════════════════════════════════════
-        if (!apiKey?.trim()) {
-            console.error('[CharacterGen] ❌ No API key');
-            return null;
-        }
+    // ═══════════════════════════════════════════════════════════════
+    // GEMINI PATH (Default or fallback)
+    // ═══════════════════════════════════════════════════════════════
+    if (!apiKey?.trim()) {
+        console.error('[CharacterGen] ❌ No API key');
+        return null;
+    }
 
-        console.log('[CharacterGen] 🔵 Using GEMINI provider');
-        return callGeminiAPI(apiKey, prompt, aspectRatio, imageModel, imageContext);
-    };
+    console.log('[CharacterGen] 🔵 Using GEMINI provider');
+    return callGeminiAPI(apiKey, prompt, aspectRatio, imageModel, imageContext);
+};
