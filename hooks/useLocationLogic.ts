@@ -70,13 +70,16 @@ export function useLocationLogic(
             High quality, detailed environment concept art, wide shot, no characters.`;
 
             // NEW: Record prompt for DOP tracking
+            const modelToUse = state.imageModel || 'gemini-3-pro-image-preview';
+            const ratioToUse = state.aspectRatio || '16:9';
+
             const dopRecordId = await recordPrompt(
                 userId || 'anonymous',
                 prompt,
                 prompt, // normalized
-                'gemini-3-pro-image-preview', // modelId
+                modelToUse, // modelId
                 'scene', // mode
-                '16:9',
+                ratioToUse,
                 apiKey
             ) || undefined;
 
@@ -84,8 +87,8 @@ export function useLocationLogic(
             const imageUrl = await callCharacterImageAPI(
                 apiKey,
                 prompt,
-                '16:9',
-                'gemini-3-pro-image-preview', // Default to Gemini 3 for high quality concepts
+                ratioToUse,
+                modelToUse, // Respect global model selection
                 null,
                 {
                     domain: state.gommoDomain || '',

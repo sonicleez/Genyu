@@ -298,62 +298,64 @@ export const callCharacterImageAPI = async (
     // ═══════════════════════════════════════════════════════════════
     // GOMMO PATH
     // ═══════════════════════════════════════════════════════════════
-    if (provider === 'gommo' && gommoCredentials?.domain && gommoCredentials?.accessToken) {
-        console.log('[CharacterGen] 🟡 Using GOMMO provider');
-        try {
-            const client = new GommoAI(gommoCredentials.domain, gommoCredentials.accessToken);
-            const gommoRatio = GommoAI.convertRatio(aspectRatio);
-
-            // Prepare subjects if imageContext provided
-            const subjects: Array<{ data?: string }> = [];
-            if (imageContext) {
-                let base64Data = '';
-                if (imageContext.startsWith('data:')) {
-                    base64Data = imageContext.split(',')[1] || '';
-                } else if (imageContext.startsWith('http')) {
-                    const fetched = await urlToBase64(imageContext);
-                    base64Data = fetched.split(',')[1] || '';
-                }
-                if (base64Data) {
-                    subjects.push({ data: base64Data });
-                }
-            }
-
-            const cdnUrl = await client.generateImage(prompt, {
-                ratio: gommoRatio,
-                model: imageModel,
-                subjects: subjects.length > 0 ? subjects : undefined,
-                onProgress: (status, attempt) => {
-                    console.log(`[CharacterGen] Polling ${attempt}/60: ${status}`);
-                }
-            });
-
-            // Convert CDN URL to base64
-            const base64Image = await urlToBase64(cdnUrl);
-            console.log('[CharacterGen] ✅ Gommo image generated successfully');
-            return base64Image;
-        } catch (error: any) {
-            console.error('[CharacterGen] ❌ Gommo error:', error.message);
-            throw error;
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // ERROR: Gommo model selected but credentials missing
-    // ═══════════════════════════════════════════════════════════════
     if (provider === 'gommo') {
-        console.error('[CharacterGen] ❌ Gommo model selected but credentials missing!');
-        throw new Error('Gommo credentials chưa được cấu hình. Vào Profile → Gommo AI để nhập Domain và Access Token.');
-    }
+        // STRICT CHECK: Only use Gommo if provider is explicitly Gommo AND credentials exist
+        if (gommoCredentials?.domain && gommoCredentials?.accessToken) {
+            console.log('[CharacterGen] 🟡 Using GOMMO provider');
+            try {
+                const client = new GommoAI(gommoCredentials.domain, gommoCredentials.accessToken);
+                const gommoRatio = GommoAI.convertRatio(aspectRatio);
 
-    // ═══════════════════════════════════════════════════════════════
-    // GEMINI PATH (only for Gemini provider models)
-    // ═══════════════════════════════════════════════════════════════
-    if (!apiKey?.trim()) {
-        console.error('[CharacterGen] ❌ No API key');
-        return null;
-    }
+                // Prepare subjects if imageContext provided
+                const subjects: Array<{ data?: string }> = [];
+                if (imageContext) {
+                    let base64Data = '';
+                    if (imageContext.startsWith('data:')) {
+                        base64Data = imageContext.split(',')[1] || '';
+                    } else if (imageContext.startsWith('http')) {
+                        const fetched = await urlToBase64(imageContext);
+                        base64Data = fetched.split(',')[1] || '';
+                    }
+                    if (base64Data) {
+                        subjects.push({ data: base64Data });
+                    }
+                }
 
-    console.log('[CharacterGen] 🔵 Using GEMINI provider');
-    return callGeminiAPI(apiKey, prompt, aspectRatio, imageModel, imageContext);
-};
+                const cdnUrl = await client.generateImage(prompt, {
+                    ratio: gommoRatio,
+                    model: imageModel,
+                    subjects: subjects.length > 0 ? subjects : undefined,
+                    onProgress: (status, attempt) => {
+                        console.log(`[CharacterGen] Polling ${attempt}/60: ${status}`);
+                    }
+                });
+
+                // Convert CDN URL to base64
+                const base64Image = await urlToBase64(cdnUrl);
+                console.log('[CharacterGen] ✅ Gommo image generated successfully');
+                return base64Image;
+            } catch (error: any) {
+                console.error('[CharacterGen] ❌ Gommo error:', error.message);
+                throw error;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // ERROR: Gommo model selected but credentials missing
+        // ═══════════════════════════════════════════════════════════════
+        if (provider === 'gommo') {
+            console.error('[CharacterGen] ❌ Gommo model selected but credentials missing!');
+            throw new Error('Gommo credentials chưa được cấu hình. Vào Profile → Gommo AI để nhập Domain và Access Token.');
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // GEMINI PATH (only for Gemini provider models)
+        // ═══════════════════════════════════════════════════════════════
+        if (!apiKey?.trim()) {
+            console.error('[CharacterGen] ❌ No API key');
+            return null;
+        }
+
+        console.log('[CharacterGen] 🔵 Using GEMINI provider');
+        return callGeminiAPI(apiKey, prompt, aspectRatio, imageModel, imageContext);
+    };
