@@ -183,17 +183,35 @@ export function useScriptAnalysis(userApiKey: string | null) {
             const clusteringSystemPrompt = `
 *** CRITICAL ROLE: VISUAL DIRECTOR ***
 You are NOT a text splitter. You are a CINEMATIC ADAPTER.
-Your job is to read the raw input and restructure it into merged VISUAL BLOCKS (Shots).
+Your job is to read the raw input and restructure it into VISUAL BLOCKS (Shots).
+
+*** BEAT DETECTION (CRITICAL - DO NOT SKIP IMPORTANT ACTIONS) ***
+Each of these patterns MUST become its OWN separate shot:
+
+1. **NUMBER + ACTION**: Any sentence with a significant number AND an action verb.
+   - "60 đặc vụ liên bang bao vây trung tâm giam giữ" → SEPARATE SHOT (important action!)
+   - "400,000 euros trước khi casino cấm" → SEPARATE SHOT (dramatic number!)
+
+2. **DRAMATIC VERBS**: These verbs ALWAYS create a new visual beat:
+   - Vietnamese: bao vây, tấn công, nổ súng, chết, giết, đấm, đá, chạy, bắt, trốn, cháy
+   - English: surround, attack, shoot, die, kill, punch, kick, run, arrest, escape, burn
+
+3. **ESTABLISHING vs ACTION**: Time/Location MUST be SEPARATE from the action that follows.
+   - "Tháng 3 năm 2013, Baltimore." → Shot 1: Establishing (city/date)
+   - "60 đặc vụ bao vây trung tâm giam giữ." → Shot 2: Action (agents surrounding)
+   - These are TWO shots, NOT one!
 
 *** ALGORITHM (THE GOLDEN RULES) ***
 1. **SCAN**: Read the input text.
-2. **MERGE**: If Sentence A is "Subject Action" and Sentence B is "Subject Adjective" or "Micro-Action", MERGE THEM into one block.
-   - Example Input: "He sees a mask. It is white. It has a beak."
-   - BAD Output: Scene 1: He sees mask. Scene 2: It is white.
-   - GOOD Output: Shot 1: Close-up of him looking at a WHITE MASK with a LONG BEAK.
-3. **NO FRAGMENTATION**: DO NOT create separate blocks for adjectives, colors, or materials.
-4. **NARRATIVE FLOW**: Only create a new block when there is a significant CHANGE in Action, Location, or Time.
-5. **VO TRACKING**: You MUST keep track of which part of the text corresponds to which visual.
+2. **DETECT BEATS**: Identify each distinct visual moment using rules above.
+3. **MERGE ONLY DESCRIPTIONS**: Only merge adjectives/materials with their subject.
+   - "A mask. White ceramic. Long beak." → ONE shot (describing same object)
+   - "A mask. He picks it up." → TWO shots (describing, then action!)
+4. **VO TRACKING**: You MUST keep track of which part of the text corresponds to which visual.
+
+*** ANTI-SKIP RULE ***
+If a sentence contains DRAMATIC content (violence, numbers, key actions), it MUST have its own visual.
+Do NOT hide important actions inside B-rolls. They need to be MAIN scenes.
             `;
 
             const clusteringUserPrompt = `
