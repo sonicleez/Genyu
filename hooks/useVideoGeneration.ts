@@ -202,7 +202,7 @@ You are generating a prompt to ANIMATE the provided keyframe image. The image is
 - Scene Description: "${context}"
 - Scene Intent: "${promptName}"
 ${voiceOverText ? `- Voice Over/Narration (OFF-SCREEN narrator, NOT character speech): "${voiceOverText}"` : ''}
-${finalDialogue ? `- Character Dialogue (ON-SCREEN character speaking, ${effectiveLanguage}): "${finalDialogue}"` : ''}
+${finalDialogue ? `- Character Dialogue (ON-SCREEN character speaking, ${effectiveLanguage}): "${finalDialogue}"` : '- Character Dialogue: **NO DIALOGUE IN THIS SCENE** (characters should NOT speak)'}
 - Products visible: "${productContext}"
 - Camera Angle: "${scene.cameraAngleOverride === 'custom' ? scene.customCameraAngle : (CAMERA_ANGLES.find(a => a.value === scene.cameraAngleOverride)?.label || 'Auto')}"
 - Lens Style: "${scene.lensOverride === 'custom' ? scene.customLensOverride : (LENS_OPTIONS.find(l => l.value === scene.lensOverride)?.label || 'Auto')}"
@@ -227,11 +227,13 @@ ${selectedPreset.prompt}
 7. Add MOTION that makes sense for what's in the image AND the detected emotion
 8. Include SFX and Emotion tags appropriate to the scene
 
-**AUDIO RULES (CRITICAL):**
-- NO background music, NO orchestral score, NO musical soundtrack
-- ONLY use SFX: for environmental/action sound effects (footsteps, water, wind, impacts)
-- ONLY use Dialogue: "[speech]" or Voiceover: "[narration]" if there's actual speech
-- Use Ambient noise: for environmental soundscape (city hum, forest sounds, room tone)
+**AUDIO RULES (CRITICAL - STRICTLY ENFORCED):**
+- ⛔ ABSOLUTELY NO BACKGROUND MUSIC - No orchestral, no ambient music, no soundtrack, no score
+- ⛔ ZERO MUSICAL ELEMENTS - No piano, guitar, strings, or any instruments
+- ✅ ONLY SOUND EFFECTS (SFX): footsteps, water, wind, impacts, doors, machines, etc.
+- ✅ ONLY DIALOGUE if finalDialogue exists above (otherwise characters are SILENT)
+- ✅ ONLY VOICEOVER if voiceOverText exists above
+- ✅ Ambient NOISE only: city hum, forest sounds, room tone, traffic, rain
 
 **PRESET-SPECIFIC RULES:**
 - If "Single Shot": One continuous 6-second animation of the image, subtle camera movement
