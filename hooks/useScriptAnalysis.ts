@@ -264,6 +264,31 @@ TASK:
    - DO NOT LEAVE \`voiceOverText\` EMPTY.
 3. Extract Characters, Locations, and Chapters as usual.
 
+CRITICAL - VOICE OVER vs DIALOGUE SEPARATION:
+You MUST correctly distinguish between these two types of text:
+
+**VOICE OVER (voiceOverText):**
+- Narration by an OFF-SCREEN narrator
+- Third-person descriptions: "He walks", "The rain falls", "A man enters"
+- Scene-setting: "March 2013, Baltimore", "Inside the warehouse"
+- Internal thoughts described: "He wondered if..."
+- ALL non-dialogue text goes here
+
+**DIALOGUE (dialogueText + dialogueSpeaker):**
+- Direct speech by an ON-SCREEN character
+- Must be in quotes or preceded by speaker name
+- First/second person when character speaks: "I will find you", "You're under arrest"
+- Examples: 
+  - "Get on the ground!" (dialogueSpeaker: "Officer")
+  - "Why are you doing this?" (dialogueSpeaker: "Victim")
+
+**RULES:**
+1. If text is DESCRIBING something (he, she, they, it) → voiceOverText
+2. If text is SOMEONE SPEAKING (I, you, quoted speech) → dialogueText + dialogueSpeaker
+3. If NO dialogue in the scene → dialogueText: null, dialogueSpeaker: null
+4. NEVER put Voice-Over narration in dialogueText
+5. NEVER put character speech in voiceOverText
+
 CRITICAL - LOCATION ANCHOR RULE:
 - Each chapter MUST define a "locationAnchor" - a DETAILED, FIXED environment description
 - ALL scenes in that chapter MUST visually exist in this EXACT location
@@ -338,12 +363,21 @@ RESPOND WITH JSON ONLY:
   ],
   "scenes": [
     {
-      "voiceOverText": "Segment of original text for this shot...",
-      "dialogueText": "Any dialogue...",
-      "dialogueSpeaker": "Speaker Name",
-      "visualPrompt": "WIDE SHOT. Casino. Étienne stands...",
+      "voiceOverText": "March 2013, Baltimore. A man walks through the rain.",
+      "dialogueText": null,
+      "dialogueSpeaker": null,
+      "visualPrompt": "WIDE SHOT. Rain-soaked street. A silhouette...",
       "chapterId": "chapter_1",
-      "characterNames": ["Étienne Marchand"],
+      "characterNames": ["The Man"],
+      "needsExpansion": false
+    },
+    {
+      "voiceOverText": "The officer approached and spoke.",
+      "dialogueText": "Stop right there! Show me your hands!",
+      "dialogueSpeaker": "Officer",
+      "visualPrompt": "MEDIUM SHOT. Officer pointing...",
+      "chapterId": "chapter_1",
+      "characterNames": ["Officer", "The Man"],
       "needsExpansion": false
     }
   ]
