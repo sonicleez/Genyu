@@ -229,20 +229,35 @@ export function useScriptAnalysis(userApiKey: string | null) {
             const lines = scriptText.split('\n');
 
             // Regex patterns for chapter headers:
-            // Pattern 1: "City/Place, Month Year" (e.g., "Marseille, November 2019")
-            // Pattern 2: "Place, Country Year" (e.g., "Rouen, France 1820s")
-            // Pattern 3: "Place Year" (e.g., "Casino de Monte-Carlo 2019")
-            // Pattern 4: "Time Jump" phrases (e.g., "Two Years Later")
+            // COMPREHENSIVE patterns to catch ALL chapter header formats
             const chapterPatterns = [
-                /^([A-Z][a-zA-Zà-ÿ\s-]+),\s*(January|February|March|April|May|June|July|August|September|October|November|December|France|Germany|Italy|Spain|UK|USA|Monaco)\s*(\d{4}s?|\d{2}s?)$/i,
-                /^([A-Z][a-zA-Zà-ÿ\s-]+),\s*([A-Z][a-zA-Zà-ÿ]+)\s+(\d{4}s?|\d{2}s?)$/i,
-                /^(Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|\d+)\s+(Years?|Months?|Weeks?|Days?)\s+(Later|Earlier|Before|After)$/i,
-                /^(The\s+)?(Investigation|The Mask|The Warehouse|The Footnote|Epilogue|Prologue)$/i,
+                // Pattern 1: "Place, Month Year" (e.g., "Marseille, November 2019", "Casino de Monte-Carlo, May 2019")
+                /^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\-']+),?\s*(January|February|March|April|May|June|July|August|September|October|November|December)\s*(\d{4}s?)$/i,
+
+                // Pattern 2: "Place, Country Year" (e.g., "Rouen, France 1820s") 
+                /^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\-']+),?\s*([A-Za-zÀ-ÿ]+)\s+(\d{4}s?|\d{3}0s)$/i,
+
+                // Pattern 3: Time jump phrases (e.g., "Two Years Later", "January 2022")
+                /^(Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|\d+)\s+(Years?|Months?|Weeks?|Days?|Hours?)\s+(Later|Earlier|Before|After|Ago)$/i,
+                /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}$/i,
+
+                // Pattern 4: Section titles (e.g., "The Mask", "The Investigation", "The Warehouse")
+                // Match "The [Word]" or single/two capitalized words on their own line
+                /^The\s+[A-Z][a-zA-Z]+$/,
+
+                // Pattern 5: Short standalone location headers (e.g., just a place name as chapter marker)
+                // Only match if it's a short line (< 40 chars) and starts with capital
+                /^[A-Z][a-zA-ZÀ-ÿ\s\-',]+$/,
             ];
 
             lines.forEach((line, index) => {
                 const trimmedLine = line.trim();
-                if (!trimmedLine || trimmedLine.length > 60) return; // Skip empty or too-long lines
+                // Skip empty lines, lines > 50 chars, or lines that look like sentences (have periods mid-line)
+                if (!trimmedLine || trimmedLine.length > 50 || /[.!?]\s+[A-Z]/.test(trimmedLine)) return;
+
+                // Also skip lines that are clearly not headers (too many words = likely a sentence)
+                const wordCount = trimmedLine.split(/\s+/).length;
+                if (wordCount > 6) return;
 
                 for (const pattern of chapterPatterns) {
                     if (pattern.test(trimmedLine)) {
@@ -639,51 +654,73 @@ RESPOND WITH JSON ONLY:
             if (chapterMarkers.length > 0) {
                 console.log('[ScriptAnalysis] 🔧 POST-PROCESSING: Overriding chapter assignments...');
 
-                result.scenes = result.scenes.map((scene: any) => {
-                    const voText = scene.voiceOverText || '';
-                    if (!voText) return scene;
+                // Build chapter ranges (start line to end line for each chapter)
+                const chapterRanges = chapterMarkers.map((marker, i) => {
+                    const nextMarker = chapterMarkers[i + 1];
+                    return {
+                        chapterId: marker.chapterId,
+                        header: marker.header,
+                        startLine: marker.lineNumber,
+                        endLine: nextMarker ? nextMarker.lineNumber - 1 : lines.length
+                    };
+                });
 
-                    // Find the first significant words of voiceOverText in original script
-                    const searchText = voText.split(/\s+/).slice(0, 5).join(' ').toLowerCase();
-                    let foundLineNumber = -1;
+                console.log('[Chapter Ranges]:', chapterRanges.map(r => `${r.header}: lines ${r.startLine}-${r.endLine}`).join(', '));
 
-                    for (let i = 0; i < lines.length; i++) {
-                        if (lines[i].toLowerCase().includes(searchText.substring(0, 30))) {
-                            foundLineNumber = i + 1;
-                            break;
-                        }
-                    }
+                // Helper function to find text in script
+                const findTextInScript = (text: string): number => {
+                    if (!text || text.length < 5) return -1;
+                    const cleanText = text.toLowerCase().replace(/[^a-z0-9\s]/g, '');
 
-                    if (foundLineNumber === -1) {
-                        // Try matching with first 3 words instead
-                        const shortSearch = voText.split(/\s+/).slice(0, 3).join(' ').toLowerCase();
+                    // Try different search lengths (8, 6, 4, 3 words)
+                    for (const wordLimit of [8, 6, 4, 3]) {
+                        const searchWords = cleanText.split(/\s+/).slice(0, wordLimit).filter(w => w.length > 2);
+                        if (searchWords.length < 2) continue;
+                        const searchString = searchWords.join(' ');
+
                         for (let i = 0; i < lines.length; i++) {
-                            if (lines[i].toLowerCase().includes(shortSearch)) {
-                                foundLineNumber = i + 1;
-                                break;
+                            const lineLower = lines[i].toLowerCase().replace(/[^a-z0-9\s]/g, '');
+                            if (lineLower.includes(searchString)) {
+                                return i + 1; // 1-indexed line number
                             }
                         }
                     }
+                    return -1;
+                };
 
-                    if (foundLineNumber > 0) {
-                        // Find which chapter this line belongs to
-                        let correctChapterId = chapterMarkers[0]?.chapterId || scene.chapterId;
-
-                        for (let i = chapterMarkers.length - 1; i >= 0; i--) {
-                            if (foundLineNumber >= chapterMarkers[i].lineNumber) {
-                                correctChapterId = chapterMarkers[i].chapterId;
-                                break;
-                            }
+                // Assign chapter based on line number
+                const getChapterForLine = (lineNum: number): string => {
+                    for (const range of chapterRanges) {
+                        if (lineNum >= range.startLine && lineNum <= range.endLine) {
+                            return range.chapterId;
                         }
+                    }
+                    return chapterMarkers[0]?.chapterId || '';
+                };
 
-                        if (correctChapterId !== scene.chapterId) {
-                            console.log(`[Chapter Override] Scene "${voText.substring(0, 30)}..." (line ${foundLineNumber}): ${scene.chapterId} → ${correctChapterId}`);
-                        }
+                // Process each scene
+                const totalScenes = result.scenes.length;
+                result.scenes = result.scenes.map((scene: any, sceneIndex: number) => {
+                    const voText = scene.voiceOverText || '';
 
-                        return { ...scene, chapterId: correctChapterId };
+                    // Try to find voiceOverText in original script
+                    let foundLineNumber = findTextInScript(voText);
+
+                    // Fallback: use scene index proportion to estimate line position
+                    if (foundLineNumber === -1) {
+                        // Estimate: scene 5 of 20 scenes → ~25% through script → line 25% of total lines
+                        const proportion = sceneIndex / totalScenes;
+                        foundLineNumber = Math.floor(proportion * lines.length) + 1;
+                        console.log(`[Chapter Fallback] Scene ${sceneIndex + 1}: using proportion ${(proportion * 100).toFixed(0)}% → line ~${foundLineNumber}`);
                     }
 
-                    return scene;
+                    const correctChapterId = getChapterForLine(foundLineNumber);
+
+                    if (correctChapterId && correctChapterId !== scene.chapterId) {
+                        console.log(`[Chapter Override] Scene ${sceneIndex + 1} "${voText.substring(0, 25)}..." (line ${foundLineNumber}): ${scene.chapterId || 'none'} → ${correctChapterId}`);
+                    }
+
+                    return { ...scene, chapterId: correctChapterId || scene.chapterId };
                 });
             }
 
