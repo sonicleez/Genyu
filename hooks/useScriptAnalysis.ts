@@ -214,6 +214,69 @@ export function useScriptAnalysis(userApiKey: string | null) {
                 ? `\n[PRE-DETECTED DIALOGUES - USE THESE AS HINTS]:\n${dialogueHints.map(h => `- Speaker: "${h.speaker}" | Dialogue: "${h.text}"`).join('\n')}\n`
                 : '';
 
+            // ═══════════════════════════════════════════════════════════════
+            // PRE-PROCESSING: Chapter Header Detection (CRITICAL FOR GROUPING)
+            // ═══════════════════════════════════════════════════════════════
+            // Detect chapter headers using regex patterns for "Location, Date/Year" format
+            // This MUST happen before AI analysis to ensure correct scene grouping
+            interface ChapterMarker {
+                lineNumber: number;
+                header: string;
+                chapterId: string;
+            }
+
+            const chapterMarkers: ChapterMarker[] = [];
+            const lines = scriptText.split('\n');
+
+            // Regex patterns for chapter headers:
+            // Pattern 1: "City/Place, Month Year" (e.g., "Marseille, November 2019")
+            // Pattern 2: "Place, Country Year" (e.g., "Rouen, France 1820s")
+            // Pattern 3: "Place Year" (e.g., "Casino de Monte-Carlo 2019")
+            // Pattern 4: "Time Jump" phrases (e.g., "Two Years Later")
+            const chapterPatterns = [
+                /^([A-Z][a-zA-Zà-ÿ\s-]+),\s*(January|February|March|April|May|June|July|August|September|October|November|December|France|Germany|Italy|Spain|UK|USA|Monaco)\s*(\d{4}s?|\d{2}s?)$/i,
+                /^([A-Z][a-zA-Zà-ÿ\s-]+),\s*([A-Z][a-zA-Zà-ÿ]+)\s+(\d{4}s?|\d{2}s?)$/i,
+                /^(Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|\d+)\s+(Years?|Months?|Weeks?|Days?)\s+(Later|Earlier|Before|After)$/i,
+                /^(The\s+)?(Investigation|The Mask|The Warehouse|The Footnote|Epilogue|Prologue)$/i,
+            ];
+
+            lines.forEach((line, index) => {
+                const trimmedLine = line.trim();
+                if (!trimmedLine || trimmedLine.length > 60) return; // Skip empty or too-long lines
+
+                for (const pattern of chapterPatterns) {
+                    if (pattern.test(trimmedLine)) {
+                        // Generate chapter ID from header
+                        const chapterId = trimmedLine
+                            .toLowerCase()
+                            .replace(/[^a-z0-9\s]/g, '')
+                            .replace(/\s+/g, '_')
+                            .substring(0, 30);
+
+                        chapterMarkers.push({
+                            lineNumber: index + 1,
+                            header: trimmedLine,
+                            chapterId: chapterId
+                        });
+                        console.log(`[Chapter Detection] 📍 Found chapter: "${trimmedLine}" → ${chapterId}`);
+                        break;
+                    }
+                }
+            });
+
+            // Build chapter hints for AI
+            const chapterHintsForAI = chapterMarkers.length > 0
+                ? `\n[PRE-DETECTED CHAPTER BOUNDARIES - STRICTLY FOLLOW THESE]:\n${chapterMarkers.map((ch, i) => {
+                    const nextChapter = chapterMarkers[i + 1];
+                    const endNote = nextChapter
+                        ? `(ALL scenes until line ${nextChapter.lineNumber - 1} belong here)`
+                        : `(ALL remaining scenes belong here)`;
+                    return `- Line ${ch.lineNumber}: "${ch.header}" → chapter_id: "${ch.chapterId}" ${endNote}`;
+                }).join('\n')}\n⚠️ CRITICAL: Use EXACTLY these chapter_ids for scenes. Do NOT create your own chapter boundaries!\n`
+                : '';
+
+            console.log(`[Chapter Detection] Found ${chapterMarkers.length} chapter boundaries`);
+
             // Parse model selector format: "model-name|thinking-level"
             const [modelName, thinkingLevel] = modelSelector.split('|');
 
@@ -279,6 +342,11 @@ export function useScriptAnalysis(userApiKey: string | null) {
             if (dialogueHintsForAI) {
                 contextInstructions += dialogueHintsForAI;
                 contextInstructions += `- IMPORTANT: These dialogues were pre-detected by regex. Use them as HINTS for your dialogueText/dialogueSpeaker fields.\n`;
+            }
+
+            // [New] Inject pre-detected chapter boundaries (CRITICAL FOR CORRECT GROUPING)
+            if (chapterHintsForAI) {
+                contextInstructions += chapterHintsForAI;
             }
 
             // ═══════════════════════════════════════════════════════════════
