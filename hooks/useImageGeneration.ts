@@ -14,7 +14,7 @@ import { GommoAI, urlToBase64 } from '../utils/gommoAI';
 import { IMAGE_MODELS } from '../utils/appConstants';
 import { normalizePrompt, normalizePromptAsync, formatNormalizationLog, needsNormalization, containsVietnamese } from '../utils/promptNormalizer';
 import { recordPrompt, approvePrompt, getSuggestedKeywords } from '../utils/dopLearning';
-import { analyzeSceneContinuity } from '../utils/dopIntelligence';
+import { analyzeSceneContinuity, extractCharacterState } from '../utils/dopIntelligence';
 import { incrementGlobalStats, recordGeneratedImage } from '../utils/userGlobalStats';
 import { validateRaccord, formatValidationResult, RaccordValidationResult } from '../utils/dopRaccordValidator';
 import { isGridModel, splitImageGrid } from '../utils/imageUtils';
@@ -631,6 +631,19 @@ OUTPUT ONLY THE PROMPT. DO NOT OUTPUT MARKDOWN OR EXPLANATION.`;
                 }
             }
 
+            // --- 2.6 CHARACTER STATE CONTINUITY (Option B: Action Continuity) ---
+            // Extract character positions/props from previous scene to maintain animation sequence consistency
+            let characterStateContinuity = '';
+            if (currentSceneIndex > 0) {
+                const prevScene = currentState.scenes[currentSceneIndex - 1];
+                if (prevScene && prevScene.contextDescription) {
+                    characterStateContinuity = extractCharacterState(prevScene.contextDescription);
+                    if (characterStateContinuity) {
+                        console.log('[ImageGen] 🎭 Character State Continuity:', characterStateContinuity);
+                    }
+                }
+            }
+
             // --- DIRECTOR DNA INJECTION ---
             let directorDNAPrompt = '';
             if (currentState.activeDirectorId) {
@@ -708,6 +721,7 @@ ${antiCollagePromptFull}
 
 [VISUAL CORE - SUBJECT & ACTION]:
 ${continuityLinkInstruction}
+${characterStateContinuity}
 ${coreActionPrompt}
 FULL SCENE ACTION: ${cleanedContext}
 

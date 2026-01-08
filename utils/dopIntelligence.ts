@@ -163,6 +163,58 @@ export async function analyzeSceneContinuity(
 }
 
 /**
+ * NEW: Extract character state from previous scene for animation continuity
+ * This ensures characters maintain consistent positions/poses across frames
+ */
+export function extractCharacterState(previousSceneDescription: string): string {
+    if (!previousSceneDescription) return '';
+
+    const states: string[] = [];
+    const desc = previousSceneDescription.toLowerCase();
+
+    // Position patterns (English + Vietnamese)
+    const positionPatterns: { pattern: RegExp; state: string }[] = [
+        { pattern: /\b(lies?|lying|nằm)\s*(face\s*down|sấp|xuống)/gi, state: 'lying face down on ground' },
+        { pattern: /\b(lies?|lying|nằm)\s*(on|trên)/gi, state: 'lying on ground' },
+        { pattern: /\b(kneels?|kneeling|quỳ)/gi, state: 'kneeling' },
+        { pattern: /\b(stands?|standing|đứng)/gi, state: 'standing' },
+        { pattern: /\b(sits?|sitting|ngồi)/gi, state: 'sitting' },
+        { pattern: /\b(crouches?|crouching|cúi)/gi, state: 'crouching' },
+        { pattern: /\b(hands?\s*cuffed|còng\s*tay)/gi, state: 'hands cuffed behind back' },
+    ];
+
+    // Extract character names and their states
+    const characterPatterns = [
+        /(?:a\s+)?(man|woman|person|officer|suspect|victim|người|cảnh sát)/gi,
+        /(?:named\s+)?([A-Z][a-zà-ỹ]+)\s+(?:stands?|lies?|kneels?|sits?)/gi,
+    ];
+
+    // Find positions
+    for (const { pattern, state } of positionPatterns) {
+        if (pattern.test(desc)) {
+            states.push(state);
+        }
+    }
+
+    // Find props on scene
+    const propPatterns = [
+        { pattern: /plague\s*doctor\s*mask|mặt\s*nạ/gi, prop: 'plague doctor mask present' },
+        { pattern: /white\s*ceramic|sứ\s*trắng/gi, prop: 'white ceramic object' },
+        { pattern: /gun|súng|pistol/gi, prop: 'gun visible' },
+    ];
+
+    for (const { pattern, prop } of propPatterns) {
+        if (pattern.test(desc)) {
+            states.push(prop);
+        }
+    }
+
+    if (states.length === 0) return '';
+
+    return `[CONTINUITY FROM PREVIOUS SCENE: ${states.join(', ')}. MAINTAIN these positions/elements in current frame.]`;
+}
+
+/**
  * Enhance prompt using learned patterns
  */
 async function enhancePromptWithLearnings(
