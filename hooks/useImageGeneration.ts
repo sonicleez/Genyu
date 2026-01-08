@@ -365,6 +365,21 @@ export function useImageGeneration(
             });
             cleanedContext = cleanedContext.replace(/\s+/g, ' ').trim();
 
+            // --- PROMPT LENGTH OPTIMIZATION ---
+            // Strip verbose sections that AI may ignore anyway
+            // SCENE STATE MEMORY is already handled by extractPoseFromVO, so remove redundant text prompts
+            cleanedContext = cleanedContext
+                .replace(/\[SCENE STATE MEMORY[^\]]*\]:?[^[]*(?=\[|$)/gi, '')
+                .replace(/\[LOCATION ANCHOR[^\]]*\]:?[^[]*(?=\[|$)/gi, '')  // Keep only essential location
+                .trim();
+
+            // Warn if context is excessively long
+            if (cleanedContext.length > 8000) {
+                console.warn('[ImageGen] ⚠️ LONG CONTEXT:', cleanedContext.length, 'chars - may slow generation');
+                // Truncate to last 8000 chars to keep most relevant (recent) context
+                cleanedContext = '...' + cleanedContext.slice(-7997);
+            }
+
 
             const isHighRes = (currentState.imageModel || 'gemini-3-pro-image-preview') === 'gemini-3-pro-image-preview';
 
