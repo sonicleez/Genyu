@@ -602,9 +602,56 @@ RESPOND WITH JSON ONLY:
 
         const sceneCharacterMap: Record<number, string[]> = {};
 
+        // --- SCENE STATE MEMORY (Option A) ---
+        // Track character positions/states across scenes for animation continuity
+        interface CharacterState {
+            name: string;
+            position: string; // 'standing' | 'lying' | 'kneeling' | 'sitting'
+            props: string[];
+        }
+        let sceneStateMemory: CharacterState[] = [];
+
+        const extractStateFromVoiceOver = (voText: string): CharacterState[] => {
+            const states: CharacterState[] = [];
+            const text = voText.toLowerCase();
+
+            // Position detection patterns
+            const positionPatterns = [
+                { regex: /(\w+)\s+(lies?|lying)\s+(face\s*down)/gi, position: 'lying face down' },
+                { regex: /(\w+)\s+(lies?|lying)/gi, position: 'lying' },
+                { regex: /(\w+)\s+(kneels?|kneeling)/gi, position: 'kneeling' },
+                { regex: /(\w+)\s+(stands?|standing)/gi, position: 'standing' },
+                { regex: /(\w+)\s+(sits?|sitting)/gi, position: 'sitting' },
+                { regex: /man\s+(lies?|lying)\s+(face\s*down)/gi, position: 'lying face down', name: 'the man' },
+                { regex: /hands?\s+cuffed/gi, position: 'hands cuffed behind back' },
+            ];
+
+            for (const { regex, position, name } of positionPatterns) {
+                const match = regex.exec(text);
+                if (match) {
+                    states.push({
+                        name: name || match[1] || 'unknown',
+                        position,
+                        props: []
+                    });
+                }
+            }
+
+            return states;
+        };
+
+        const buildSceneStateSummary = (): string => {
+            if (sceneStateMemory.length === 0) return '';
+            const summary = sceneStateMemory.map(s => `${s.name}: ${s.position}`).join(', ');
+            return `[SCENE STATE MEMORY - MAINTAIN THESE POSITIONS]: ${summary}`;
+        };
+
         for (const sceneAnalysis of analysis.scenes) {
             // PHASE 2: Get locationAnchor for this scene's chapter
             const locationAnchor = chapterLocationMap[sceneAnalysis.chapterId] || '';
+
+            // PHASE 3: Build scene state summary for animation continuity
+            const sceneStateSummary = buildSceneStateSummary();
 
             // Main scene with VO
             const mainScene: Scene = {
@@ -628,8 +675,9 @@ RESPOND WITH JSON ONLY:
                 isDialogueScene: Boolean(sceneAnalysis.dialogueText && sceneAnalysis.dialogueSpeaker),
                 voSecondsEstimate: sceneAnalysis.estimatedDuration,
 
-                // PHASE 2: Visual prompt with LOCATION ANCHOR injection
+                // PHASE 2+3: Visual prompt with LOCATION ANCHOR + SCENE STATE MEMORY
                 contextDescription: [
+                    sceneStateSummary, // Inject previous scene states first (animation continuity)
                     locationAnchor ? `[LOCATION ANCHOR - MANDATORY]: ${locationAnchor}` : '',
                     stylePrompt ? `[CHARACTER STYLE]: ${stylePrompt}` : '',
                     directorDna ? `[DIRECTOR DNA]: ${directorDna}` : '',
@@ -649,6 +697,23 @@ RESPOND WITH JSON ONLY:
             // Map characters to scene index (0-based)
             // Map characters to scene index (0-based)
             sceneCharacterMap[scenes.length] = sceneAnalysis.characterNames || [];
+
+            // PHASE 3: Update scene state memory for next scene's continuity
+            if (sceneAnalysis.voiceOverText) {
+                const newStates = extractStateFromVoiceOver(sceneAnalysis.voiceOverText);
+                if (newStates.length > 0) {
+                    // Merge new states with existing (newer states override)
+                    newStates.forEach(ns => {
+                        const existing = sceneStateMemory.findIndex(s => s.name === ns.name);
+                        if (existing >= 0) {
+                            sceneStateMemory[existing] = ns;
+                        } else {
+                            sceneStateMemory.push(ns);
+                        }
+                    });
+                    console.log(`[ScriptAnalysis] 🎭 Scene ${sceneNumber} state memory updated:`, sceneStateMemory);
+                }
+            }
 
             // AUTO-ASSIGN EXISTING CHARACTERS
             if (existingCharacters && existingCharacters.length > 0) {
