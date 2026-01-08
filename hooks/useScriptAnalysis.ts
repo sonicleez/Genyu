@@ -307,6 +307,19 @@ Each of these patterns MUST become its OWN separate shot:
    - "60 đặc vụ bao vây trung tâm giam giữ." → Shot 2: Action (agents surrounding)
    - These are TWO shots, NOT one!
 
+4. **CHAPTER BOUNDARY DETECTION (CRITICAL FOR GROUPING)**:
+   Standalone lines with LOCATION + TIME/YEAR indicate a NEW CHAPTER (different group/location):
+   - "Marseille, November 2019" → NEW CHAPTER (Chapter: marseille_2019)
+   - "Rouen, France 1820s" → NEW CHAPTER (Chapter: rouen_1820s)
+   - "Casino de Monte-Carlo, May 2019" → NEW CHAPTER (Chapter: montecarlo_2019)
+   - "Two Years Later" → NEW CHAPTER (time jump)
+   
+   When you detect these headers, you MUST:
+   - Mark them as belonging to a NEW chapter_id
+   - Use a descriptive chapter_id like "marseille_2019" or "rouen_1820s"
+   - ALL subsequent scenes belong to this chapter until the NEXT header
+   - Do NOT merge scenes from different chapters into same group!
+
 *** ALGORITHM (THE GOLDEN RULES) ***
 1. **SCAN**: Read the input text.
 2. **DETECT BEATS**: Identify each distinct visual moment using rules above.
@@ -399,6 +412,14 @@ CRITICAL - LOCATION ANCHOR RULE:
 - Each chapter MUST define a "locationAnchor" - a DETAILED, FIXED environment description
 - ALL scenes in that chapter MUST visually exist in this EXACT location
 - Format: "Interior/Exterior, [specific place], [decade], [architectural style], [lighting], [key props]"
+
+CRITICAL - CHAPTER GROUPING (LOCATION + TIME BOUNDARIES):
+- Create a NEW chapter whenever LOCATION or TIME PERIOD changes in the script
+- "Marseille, November 2019" and "Rouen, France 1820s" are DIFFERENT chapters with DIFFERENT chapter_ids
+- "Casino de Monte-Carlo, May 2019" is a DIFFERENT chapter from "Marseille, November 2019"
+- Each scene's chapterId MUST match the location/time header it falls under
+- NEVER group scenes from different locations into the same chapter
+- Use descriptive chapter_ids: "marseille_2019", "rouen_1820s", "montecarlo_may2019"
 
 VISUAL PROMPT FORMAT:
 "[SHOT TYPE]. [Cinematic Purpose]. [Spatial View/Axis]. [Location from locationAnchor]. [Subject/Characters]. [Action]. [Mood]."
